@@ -1,7 +1,7 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
-import type { CaamlData, DangerRating } from '../types/avalanche';
-import { processAvalancheData } from '../utils/data-processing';
+import type { CaamlData } from '../types/avalanche';
+import { processRegionElevations } from '../utils/data-processing';
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
@@ -27,6 +27,17 @@ export class MapComponent {
 
         this.map.on('load', () => {
             console.log('Map loaded');
+
+            // Add terrain
+            this.map!.addSource('maptiler_terrain', {
+                type: 'raster-dem',
+                url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${maptiler.config.apiKey}`
+            });
+            this.map!.setTerrain({
+                source: 'maptiler_terrain',
+                exaggeration: 1
+            });
+
             this.resolveMapLoaded();
         });
     }
@@ -35,73 +46,99 @@ export class MapComponent {
         await this.mapLoaded;
         if (!this.map) return;
 
-        const regionDangerMap = processAvalancheData(data);
+        const elevationBands = processRegionElevations(data);
+
+        // Create a new FeatureCollection for the bands
+        const bandsFeatures = {
+            type: 'FeatureCollection' as const,
+            features: [] as any[]
+        };
+
+        // Map regions by ID for easy lookup
+        const regionsMap = new Map<string, any>();
+        if (regionsGeoJSON.features) {
+            regionsGeoJSON.features.forEach((f: any) => {
+                regionsMap.set(f.properties.id, f);
+            });
+        }
+
+        elevationBands.forEach(band => {
+            const regionFeature = regionsMap.get(band.regionID);
+            if (regionFeature) {
+                // Clone feature and add elevation properties
+                const bandFeature = JSON.parse(JSON.stringify(regionFeature));
+                bandFeature.properties.min_elev = band.minElev;
+                bandFeature.properties.max_elev = band.maxElev;
+                bandFeature.properties.color = this.getDangerColor(band.dangerLevel);
+                bandFeature.properties.dangerLevel = band.dangerLevel;
+                bandsFeatures.features.push(bandFeature);
+            }
+        });
 
         // Add source
-        this.map.addSource('regions', {
+        this.map.addSource('avalanche-bands', {
+            type: 'geojson',
+            data: bandsFeatures
+        });
+
+        // Add fill-extrusion layer
+        this.map.addLayer({
+            id: 'avalanche-extrusion',
+            type: 'fill-extrusion',
+            source: 'avalanche-bands',
+            paint: {
+                'fill-extrusion-color': ['get', 'color'],
+                'fill-extrusion-height': ['get', 'max_elev'],
+                'fill-extrusion-base': ['get', 'min_elev'],
+                'fill-extrusion-opacity': 0.6
+            }
+        });
+
+        // Add outline layer (optional, maybe keep original regions for context?)
+        // Let's keep the original regions outline but maybe thinner or different color
+        this.map.addSource('regions-outline-source', {
             type: 'geojson',
             data: regionsGeoJSON
         });
 
-        // Add layer
-        this.map.addLayer({
-            id: 'regions-fill',
-            type: 'fill',
-            source: 'regions',
-            paint: {
-                'fill-color': [
-                    'match',
-                    ['get', 'id'], // GeoJSON property for region ID
-                    ...this.buildColorExpression(regionDangerMap),
-                    '#888888' // Default color
-                ] as any,
-                'fill-opacity': 0.7,
-                'fill-outline-color': '#000000'
-            }
-        });
-
-        // Add outline layer
         this.map.addLayer({
             id: 'regions-outline',
             type: 'line',
-            source: 'regions',
+            source: 'regions-outline-source',
             paint: {
                 'line-color': '#000000',
-                'line-width': 1
+                'line-width': 1,
+                'line-opacity': 0.3
             }
         });
 
         // Add click event
-        this.map.on('click', 'regions-fill', (e) => {
+        this.map.on('click', 'avalanche-extrusion', (e) => {
             if (e.features && e.features.length > 0) {
                 const feature = e.features[0];
                 const regionId = feature.properties['id'];
-                const danger = regionDangerMap.get(regionId);
-                console.log('Clicked region:', regionId, danger);
+                const danger = feature.properties['dangerLevel'];
+                const min = feature.properties['min_elev'];
+                const max = feature.properties['max_elev'];
 
                 new maptiler.Popup()
                     .setLngLat(e.lngLat)
-                    .setHTML(`<h3>Region: ${regionId}</h3><p>Danger Level: ${danger?.mainValue || 'Unknown'}</p>`)
+                    .setHTML(`
+                        <h3>Region: ${regionId}</h3>
+                        <p>Danger Level: ${danger}</p>
+                        <p>Elevation: ${min}m - ${max}m</p>
+                    `)
                     .addTo(this.map!);
             }
         });
 
         // Change cursor on hover
-        this.map.on('mouseenter', 'regions-fill', () => {
+        this.map.on('mouseenter', 'avalanche-extrusion', () => {
             this.map!.getCanvas().style.cursor = 'pointer';
         });
-        this.map.on('mouseleave', 'regions-fill', () => {
+        this.map.on('mouseleave', 'avalanche-extrusion', () => {
             this.map!.getCanvas().style.cursor = '';
         });
-    }
-
-    private buildColorExpression(map: Map<string, DangerRating>): any[] {
-        const expression: any[] = [];
-        map.forEach((rating, regionId) => {
-            expression.push(regionId);
-            expression.push(this.getDangerColor(rating.mainValue));
-        });
-        return expression;
     }
 
     private getDangerColor(level: string): string {

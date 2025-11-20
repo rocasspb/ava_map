@@ -5,6 +5,13 @@ export interface RegionDanger {
     dangerRating: DangerRating;
 }
 
+export interface ElevationBand {
+    regionID: string;
+    dangerLevel: string;
+    minElev: number;
+    maxElev: number;
+}
+
 export function processAvalancheData(data: CaamlData): Map<string, DangerRating> {
     const regionDangerMap = new Map<string, DangerRating>();
 
@@ -43,6 +50,75 @@ export function processAvalancheData(data: CaamlData): Map<string, DangerRating>
     });
 
     return regionDangerMap;
+}
+
+export function processRegionElevations(data: CaamlData): ElevationBand[] {
+    const bands: ElevationBand[] = [];
+
+    data.bulletins.forEach(bulletin => {
+        // If there are specific avalanche problems, they often define the elevation
+        if (bulletin.avalancheProblems && bulletin.avalancheProblems.length > 0) {
+            bulletin.regions.forEach(region => {
+                // Find the highest danger rating for this region (or global to bulletin)
+                const maxDanger = getMaxDanger(bulletin.dangerRatings);
+                if (!maxDanger) return;
+
+                // Check if problems have elevation info
+                // Note: Problems might have different elevations. 
+                // For visualization, we'll try to create bands for each problem that applies.
+                // However, usually the DANGER RATING itself has an elevation in the CAAML structure 
+                // (see DangerRating interface: it has 'elevation').
+
+                // Let's look at the DangerRatings first as they directly correlate to the color.
+                bulletin.dangerRatings.forEach(rating => {
+                    const { min, max } = parseElevation(rating.elevation);
+                    bands.push({
+                        regionID: region.regionID,
+                        dangerLevel: rating.mainValue,
+                        minElev: min,
+                        maxElev: max
+                    });
+                });
+            });
+        } else {
+            // Fallback if no problems/ratings with specific elevation: apply to all
+            const maxDanger = getMaxDanger(bulletin.dangerRatings);
+            if (maxDanger) {
+                bulletin.regions.forEach(region => {
+                    bands.push({
+                        regionID: region.regionID,
+                        dangerLevel: maxDanger.mainValue,
+                        minElev: 0,
+                        maxElev: 9000
+                    });
+                });
+            }
+        }
+    });
+
+    return bands;
+}
+
+function parseElevation(elevation: { lowerBound?: string; upperBound?: string } | undefined): { min: number, max: number } {
+    let min = 0;
+    let max = 9000; // Default max elevation
+
+    if (!elevation) return { min, max };
+
+    if (elevation.lowerBound) {
+        min = parseInt(elevation.lowerBound, 10);
+        if (isNaN(min)) min = 0;
+    }
+
+    if (elevation.upperBound) {
+        max = parseInt(elevation.upperBound, 10);
+        if (isNaN(max)) max = 9000;
+    }
+
+    // Handle cases where bounds might be textual or specific codes if necessary
+    // For now, assuming standard CAAML numeric strings
+
+    return { min, max };
 }
 
 function getMaxDanger(ratings: DangerRating[]): DangerRating | null {
