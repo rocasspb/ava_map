@@ -357,10 +357,10 @@ export class MapComponent {
 
         // Dynamic grid spacing based on zoom
         const currentZoom = this.map!.getZoom();
-        const baseSpacing = 0.01; // at zoom 8
+        const baseSpacing = 0.02; // at zoom 8
         const baseZoom = 8;
         // Formula: spacing decreases as zoom increases (density increases)
-        let gridSpacingDeg = baseSpacing * Math.pow(1.5, baseZoom - currentZoom);
+        let gridSpacingDeg = baseSpacing * Math.pow(2, baseZoom - currentZoom);
 
         // Clamp spacing to avoid performance issues
         gridSpacingDeg = Math.max(gridSpacingDeg, 0.0001); // Min spacing ~10m
