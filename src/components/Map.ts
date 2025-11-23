@@ -360,11 +360,11 @@ export class MapComponent {
         const baseSpacing = 0.01; // at zoom 8
         const baseZoom = 8;
         // Formula: spacing decreases as zoom increases (density increases)
-        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.4, baseZoom - currentZoom);
+        let gridSpacingDeg = baseSpacing * Math.pow(1.5, baseZoom - currentZoom);
 
         // Clamp spacing to avoid performance issues
-        GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0001); // Min spacing ~10m
-        GRID_SPACING_DEG = Math.min(GRID_SPACING_DEG, 0.01);   // Max spacing ~1km
+        gridSpacingDeg = Math.max(gridSpacingDeg, 0.0001); // Min spacing ~10m
+        gridSpacingDeg = Math.min(gridSpacingDeg, 0.01);   // Max spacing ~1km
 
         const mapBounds = this.map!.getBounds();
 
@@ -379,8 +379,8 @@ export class MapComponent {
             if (minLng > maxLng || minLat > maxLat) continue;
 
             // Generate grid points
-            for (let lng = minLng; lng <= maxLng; lng += GRID_SPACING_DEG) {
-                for (let lat = minLat; lat <= maxLat; lat += GRID_SPACING_DEG) {
+            for (let lng = minLng; lng <= maxLng; lng += gridSpacingDeg) {
+                for (let lat = minLat; lat <= maxLat; lat += gridSpacingDeg) {
                     const point: [number, number] = [lng, lat];
 
                     // 1. Check if point is inside region polygon (if geometry exists)
