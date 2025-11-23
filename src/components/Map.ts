@@ -13,6 +13,13 @@ export class MapComponent {
     private lastAvalancheData: CaamlData | null = null;
     private lastRegionsGeoJSON: any | null = null;
 
+    // State for dynamic updates
+    private currentMode: 'avalanche' | 'custom' = 'avalanche';
+    private customMin: number = 0;
+    private customMax: number = 9000;
+    private customAspects: string[] = [];
+    private isGenerating: boolean = false;
+
     constructor(containerId: string) {
         this.containerId = containerId;
         maptiler.config.apiKey = import.meta.env.VITE_MAPTILER_KEY;
@@ -42,11 +49,21 @@ export class MapComponent {
                 exaggeration: 1
             });
 
+            // Add moveend listener for dynamic updates
+            this.map!.on('moveend', () => {
+                this.refreshPoints();
+            });
+
             this.resolveMapLoaded();
         });
     }
 
     async setCustomMode(enabled: boolean, min: number = 0, max: number = 9000, aspects: string[] = []) {
+        this.currentMode = enabled ? 'custom' : 'avalanche';
+        this.customMin = min;
+        this.customMax = max;
+        this.customAspects = aspects;
+
         if (enabled) {
             await this.renderCustomElevation(min, max, aspects);
         } else {
@@ -56,12 +73,24 @@ export class MapComponent {
         }
     }
 
+    private async refreshPoints() {
+        if (this.isGenerating) return;
+
+        if (this.currentMode === 'custom') {
+            await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects);
+        } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
+            await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
+        }
+    }
+
     async renderAvalancheData(data: CaamlData, regionsGeoJSON: any) {
         await this.mapLoaded;
         if (!this.map) return;
 
+        this.isGenerating = true;
         this.lastAvalancheData = data;
         this.lastRegionsGeoJSON = regionsGeoJSON;
+        this.currentMode = 'avalanche';
 
         const elevationBands = processRegionElevations(data);
 
@@ -78,11 +107,18 @@ export class MapComponent {
         this.addPointLayer();
         this.addOutlineLayer(regionsGeoJSON);
         this.setupInteractions();
+        this.isGenerating = false;
     }
 
     async renderCustomElevation(min: number, max: number, aspects: string[] = []) {
         await this.mapLoaded;
         if (!this.map) return;
+
+        this.isGenerating = true;
+        this.currentMode = 'custom';
+        this.customMin = min;
+        this.customMax = max;
+        this.customAspects = aspects;
 
         // Global bounds for Euregio (approximate)
         const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
@@ -98,6 +134,7 @@ export class MapComponent {
         if (this.map.getSource('regions-outline-source')) {
             this.map.removeSource('regions-outline-source');
         }
+        this.isGenerating = false;
     }
 
     private updatePointSource(features: any) {
@@ -199,18 +236,42 @@ export class MapComponent {
 
     private async generateElevationPoints(bands: ElevationBand[], regionsMap: Map<string, any>): Promise<any> {
         const features: any[] = [];
-        const GRID_SPACING_DEG = 0.001; // Approx 100m
+
+        // Dynamic grid spacing based on zoom
+        const currentZoom = this.map!.getZoom();
+        const baseSpacing = 0.01; // at zoom 8
+        const baseZoom = 8;
+        // Formula: spacing decreases as zoom increases (density increases)
+        // We want spacing to be smaller when zoom is higher.
+        // Using 1.2 instead of 2 to make it less aggressive (points will visually spread out slightly as you zoom in)
+        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.2, baseZoom - currentZoom);
+
+        // Clamp spacing to avoid performance issues
+        GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0001); // Min spacing ~10m
+        GRID_SPACING_DEG = Math.min(GRID_SPACING_DEG, 0.01);   // Max spacing ~1km
+
+        const mapBounds = this.map!.getBounds();
 
         for (const band of bands) {
             const regionFeature = regionsMap.get(band.regionID);
             if (!regionFeature) continue;
 
-            const bounds = this.getBounds(regionFeature);
+            const regionBounds = this.getBounds(regionFeature);
+
+            // Intersect region bounds with map bounds to only generate visible points
+            const minLng = Math.max(regionBounds.minLng, mapBounds.getWest());
+            const maxLng = Math.min(regionBounds.maxLng, mapBounds.getEast());
+            const minLat = Math.max(regionBounds.minLat, mapBounds.getSouth());
+            const maxLat = Math.min(regionBounds.maxLat, mapBounds.getNorth());
+
+            // Skip if region is not visible
+            if (minLng > maxLng || minLat > maxLat) continue;
+
             const color = this.getDangerColor(band.dangerLevel);
 
             // Generate grid points
-            for (let lng = bounds.minLng; lng <= bounds.maxLng; lng += GRID_SPACING_DEG) {
-                for (let lat = bounds.minLat; lat <= bounds.maxLat; lat += GRID_SPACING_DEG) {
+            for (let lng = minLng; lng <= maxLng; lng += GRID_SPACING_DEG) {
+                for (let lat = minLat; lat <= maxLat; lat += GRID_SPACING_DEG) {
                     const point: [number, number] = [lng, lat];
 
                     // 1. Check if point is inside region polygon
@@ -255,10 +316,35 @@ export class MapComponent {
 
     private async generateGlobalPoints(bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number }, minElev: number, maxElev: number, selectedAspects: string[]): Promise<any> {
         const features: any[] = [];
-        const GRID_SPACING_DEG = 0.005; // Approx 500m
 
-        for (let lng = bounds.minLng; lng <= bounds.maxLng; lng += GRID_SPACING_DEG) {
-            for (let lat = bounds.minLat; lat <= bounds.maxLat; lat += GRID_SPACING_DEG) {
+        // Dynamic grid spacing based on zoom
+        const currentZoom = this.map!.getZoom();
+        const baseSpacing = 0.005; // Approx 500m at zoom 8
+        const baseZoom = 8;
+        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.5, baseZoom - currentZoom);
+
+        // Clamp spacing
+        GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0002);
+        GRID_SPACING_DEG = Math.min(GRID_SPACING_DEG, 0.02);
+
+        const mapBounds = this.map!.getBounds();
+
+        // Intersect global bounds with map bounds
+        const minLng = Math.max(bounds.minLng, mapBounds.getWest());
+        const maxLng = Math.min(bounds.maxLng, mapBounds.getEast());
+        const minLat = Math.max(bounds.minLat, mapBounds.getSouth());
+        const maxLat = Math.min(bounds.maxLat, mapBounds.getNorth());
+
+        // Skip if not visible
+        if (minLng > maxLng || minLat > maxLat) {
+            return {
+                type: 'FeatureCollection',
+                features: []
+            };
+        }
+
+        for (let lng = minLng; lng <= maxLng; lng += GRID_SPACING_DEG) {
+            for (let lat = minLat; lat <= maxLat; lat += GRID_SPACING_DEG) {
                 const point: [number, number] = [lng, lat];
                 const elevation = this.map?.queryTerrainElevation(point);
 
