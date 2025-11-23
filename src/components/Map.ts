@@ -291,7 +291,7 @@ export class MapComponent {
         const baseSpacing = 0.01; // at zoom 8
         const baseZoom = 8;
         // Formula: spacing decreases as zoom increases (density increases)
-        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.2, baseZoom - currentZoom);
+        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.3, baseZoom - currentZoom);
 
         // Clamp spacing to avoid performance issues
         GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0001); // Min spacing ~10m
