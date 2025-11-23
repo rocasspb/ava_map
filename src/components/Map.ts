@@ -3,7 +3,8 @@ import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
 
-import { isPointInPolygon, isPointInMultiPolygon } from '../utils/geometry';
+import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
+import { calculateAspect } from '../utils/geo-utils';
 
 interface GenerationRule {
     bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number };
@@ -119,7 +120,7 @@ export class MapComponent {
             const regionFeature = regionsMap.get(band.regionID);
             if (!regionFeature) continue;
 
-            const regionBounds = this.getBounds(regionFeature);
+            const regionBounds = getBounds(regionFeature);
             const color = this.getDangerColor(band.dangerLevel);
 
             rules.push({
@@ -327,7 +328,7 @@ export class MapComponent {
                             // Check aspect if specific aspects are defined for this rule
                             let aspect: string | null = null;
                             if (rule.validAspects && rule.validAspects.length > 0) {
-                                aspect = this.calculateAspect(point);
+                                aspect = calculateAspect(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
                                 if (!aspect || !rule.validAspects.includes(aspect)) {
                                     continue;
                                 }
@@ -358,71 +359,9 @@ export class MapComponent {
         };
     }
 
-    private calculateAspect(point: [number, number]): string | null {
-        if (!this.map) return null;
 
-        const [lng, lat] = point;
-        const offset = 0.001; // Small offset for gradient calculation
 
-        // Get elevations of surrounding points
-        const z0 = this.map.queryTerrainElevation([lng, lat]);
-        const zN = this.map.queryTerrainElevation([lng, lat + offset]);
-        const zE = this.map.queryTerrainElevation([lng + offset, lat]);
-        const zS = this.map.queryTerrainElevation([lng, lat - offset]);
-        const zW = this.map.queryTerrainElevation([lng - offset, lat]);
 
-        if (z0 === null || zN === null || zE === null || zS === null || zW === null) return null;
-
-        // Calculate slopes (dz/dx and dz/dy)
-        const dz_dx = ((zE - zW) / (2 * offset));
-        const dz_dy = ((zN - zS) / (2 * offset));
-
-        // Calculate aspect angle
-        // Gradient points uphill. Aspect faces downhill.
-        const downhillX = -dz_dx;
-        const downhillY = -dz_dy;
-
-        // Angle from East counter-clockwise
-        const angleFromEastCCW = Math.atan2(downhillY, downhillX) * (180 / Math.PI);
-
-        // Convert to Compass Bearing (0=N, 90=E, 180=S, 270=W)
-        let bearing = 90 - angleFromEastCCW;
-        if (bearing < 0) bearing += 360;
-
-        // Map to cardinal directions
-        if (bearing >= 337.5 || bearing < 22.5) return 'N';
-        if (bearing >= 22.5 && bearing < 67.5) return 'NE';
-        if (bearing >= 67.5 && bearing < 112.5) return 'E';
-        if (bearing >= 112.5 && bearing < 157.5) return 'SE';
-        if (bearing >= 157.5 && bearing < 202.5) return 'S';
-        if (bearing >= 202.5 && bearing < 247.5) return 'SW';
-        if (bearing >= 247.5 && bearing < 292.5) return 'W';
-        if (bearing >= 292.5 && bearing < 337.5) return 'NW';
-
-        return null;
-    }
-
-    private getBounds(feature: any) {
-        let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
-
-        const processRing = (ring: number[][]) => {
-            ring.forEach(coord => {
-                const [lng, lat] = coord;
-                if (lng < minLng) minLng = lng;
-                if (lng > maxLng) maxLng = lng;
-                if (lat < minLat) minLat = lat;
-                if (lat > maxLat) maxLat = lat;
-            });
-        };
-
-        if (feature.geometry.type === 'Polygon') {
-            processRing(feature.geometry.coordinates[0]);
-        } else if (feature.geometry.type === 'MultiPolygon') {
-            feature.geometry.coordinates.forEach((poly: any) => processRing(poly[0]));
-        }
-
-        return { minLng, maxLng, minLat, maxLat };
-    }
 
     private getDangerColor(level: string): string {
         switch (level) {

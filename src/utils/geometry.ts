@@ -48,3 +48,25 @@ export function isPointInMultiPolygon(point: [number, number], multiPolygon: num
     }
     return false;
 }
+
+export function getBounds(feature: any) {
+    let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+
+    const processRing = (ring: number[][]) => {
+        ring.forEach(coord => {
+            const [lng, lat] = coord;
+            if (lng < minLng) minLng = lng;
+            if (lng > maxLng) maxLng = lng;
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+        });
+    };
+
+    if (feature.geometry.type === 'Polygon') {
+        processRing(feature.geometry.coordinates[0]);
+    } else if (feature.geometry.type === 'MultiPolygon') {
+        feature.geometry.coordinates.forEach((poly: any) => processRing(poly[0]));
+    }
+
+    return { minLng, maxLng, minLat, maxLat };
+}
