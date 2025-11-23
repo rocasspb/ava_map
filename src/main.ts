@@ -41,16 +41,23 @@ const initApp = async () => {
     modeRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
         const mode = (e.target as HTMLInputElement).value;
+
         if (mode === 'custom') {
           customControls?.classList.remove('hidden');
-          const min = parseInt(minInput.value);
-          const max = parseInt(maxInput.value);
-          const minSlope = parseInt(minSlopeInput.value);
-          const aspects = getSelectedAspects();
+          // Trigger custom mode update with current values
+          const min = Number((document.getElementById('min-elev') as HTMLInputElement).value);
+          const max = Number((document.getElementById('max-elev') as HTMLInputElement).value);
+          const aspects = Array.from(document.querySelectorAll('input[name="aspect"]:checked'))
+            .map(cb => (cb as HTMLInputElement).value);
+          const minSlope = Number((document.getElementById('min-slope') as HTMLSelectElement).value);
+
           mapComponent.setCustomMode(true, min, max, aspects, minSlope);
+        } else if (mode === 'steepness') {
+          customControls?.classList.add('hidden');
+          mapComponent.setSteepnessMode(true);
         } else {
           customControls?.classList.add('hidden');
-          mapComponent.setCustomMode(false);
+          mapComponent.setCustomMode(false); // This switches back to avalanche
         }
       });
     });

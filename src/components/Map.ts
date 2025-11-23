@@ -26,7 +26,7 @@ export class MapComponent {
     private lastRegionsGeoJSON: any | null = null;
 
     // State for dynamic updates
-    private currentMode: 'avalanche' | 'custom' = 'avalanche';
+    private currentMode: 'avalanche' | 'custom' | 'steepness' = 'avalanche';
     private customMin: number = 0;
     private customMax: number = 9000;
     private customAspects: string[] = [];
@@ -71,6 +71,7 @@ export class MapComponent {
         });
     }
 
+    //TODO rework setCustomMode and setSteepnessMode to be an universal mode switch
     async setCustomMode(enabled: boolean, min?: number, max?: number, aspects?: string[], minSlope?: number) {
         if (enabled) {
             this.currentMode = 'custom';
@@ -79,6 +80,19 @@ export class MapComponent {
             if (aspects !== undefined) this.customAspects = aspects;
             if (minSlope !== undefined) this.customMinSlope = minSlope;
             await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
+        } else {
+            // If disabling custom mode, we might be going back to avalanche or steepness.
+            // For now, let's default to avalanche if just toggling custom off, 
+            // but the UI should handle explicit mode switches.
+            this.currentMode = 'avalanche';
+            this.updateVisualization();
+        }
+    }
+
+    async setSteepnessMode(enabled: boolean) {
+        if (enabled) {
+            this.currentMode = 'steepness';
+            await this.renderSteepness();
         } else {
             this.currentMode = 'avalanche';
             this.updateVisualization();
@@ -93,6 +107,8 @@ export class MapComponent {
     async updateVisualization() {
         if (this.currentMode === 'custom') {
             await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
+        } else if (this.currentMode === 'steepness') {
+            await this.renderSteepness();
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
         }
@@ -177,6 +193,59 @@ export class MapComponent {
         this.addPointLayer();
 
         // Remove outlines in custom mode if they exist
+        if (this.map.getLayer('regions-outline')) {
+            this.map.removeLayer('regions-outline');
+        }
+        if (this.map.getSource('regions-outline-source')) {
+            this.map.removeSource('regions-outline-source');
+        }
+        this.isGenerating = false;
+    }
+
+    async renderSteepness() {
+        await this.mapLoaded;
+        if (!this.map) return;
+
+        this.isGenerating = true;
+        this.currentMode = 'steepness';
+
+        // Global bounds for Euregio (approximate)
+        const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
+
+        // Define steepness bands
+        // We order them so that higher steepness (Red) is drawn last (on top)
+        const orderedRules: GenerationRule[] = [
+            {
+                bounds: bounds,
+                minElev: 0,
+                maxElev: 9000,
+                minSlope: 30,
+                color: '#FFFF33', // Yellow
+                properties: { steepness: '> 30°' }
+            },
+            {
+                bounds: bounds,
+                minElev: 0,
+                maxElev: 9000,
+                minSlope: 35,
+                color: '#FF9900', // Orange
+                properties: { steepness: '> 35°' }
+            },
+            {
+                bounds: bounds,
+                minElev: 0,
+                maxElev: 9000,
+                minSlope: 40,
+                color: '#FF0000', // Red
+                properties: { steepness: '> 40°' }
+            }
+        ];
+
+        const pointsFeatures = await this.generatePoints(orderedRules);
+        this.updatePointSource(pointsFeatures);
+        this.addPointLayer();
+
+        // Remove outlines
         if (this.map.getLayer('regions-outline')) {
             this.map.removeLayer('regions-outline');
         }
@@ -291,7 +360,7 @@ export class MapComponent {
         const baseSpacing = 0.01; // at zoom 8
         const baseZoom = 8;
         // Formula: spacing decreases as zoom increases (density increases)
-        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.3, baseZoom - currentZoom);
+        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.4, baseZoom - currentZoom);
 
         // Clamp spacing to avoid performance issues
         GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0001); // Min spacing ~10m

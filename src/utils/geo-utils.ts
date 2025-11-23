@@ -56,7 +56,7 @@ export function calculateAspect(point: [number, number], queryElevation: Elevati
  */
 export function calculateSlope(point: [number, number], queryElevation: ElevationQuery): number | null {
     const [lng, lat] = point;
-    const offset = 0.0005; // Small offset for gradient calculation
+    const offset = 0.0001; // Small offset for gradient calculation
 
     // Get elevations of surrounding points
     const zN = queryElevation([lng, lat + offset]);
