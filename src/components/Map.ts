@@ -4,13 +4,14 @@ import type { CaamlData } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
 
 import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
-import { calculateAspect } from '../utils/geo-utils';
+import { calculateAspect, calculateSlope } from '../utils/geo-utils';
 
 interface GenerationRule {
     bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number };
     geometry?: any;
     minElev: number;
     maxElev: number;
+    minSlope?: number;
     validAspects?: string[];
     color: string;
     properties: any;
@@ -29,6 +30,7 @@ export class MapComponent {
     private customMin: number = 0;
     private customMax: number = 9000;
     private customAspects: string[] = [];
+    private customMinSlope: number = 0;
     private isGenerating: boolean = false;
 
     constructor(containerId: string) {
@@ -69,26 +71,28 @@ export class MapComponent {
         });
     }
 
-    async setCustomMode(enabled: boolean, min: number = 0, max: number = 9000, aspects: string[] = []) {
-        this.currentMode = enabled ? 'custom' : 'avalanche';
-        this.customMin = min;
-        this.customMax = max;
-        this.customAspects = aspects;
-
+    async setCustomMode(enabled: boolean, min?: number, max?: number, aspects?: string[], minSlope?: number) {
         if (enabled) {
-            await this.renderCustomElevation(min, max, aspects);
+            this.currentMode = 'custom';
+            if (min !== undefined) this.customMin = min;
+            if (max !== undefined) this.customMax = max;
+            if (aspects !== undefined) this.customAspects = aspects;
+            if (minSlope !== undefined) this.customMinSlope = minSlope;
+            await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
         } else {
-            if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
-                await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
-            }
+            this.currentMode = 'avalanche';
+            this.updateVisualization();
         }
     }
 
     private async refreshPoints() {
         if (this.isGenerating) return;
+        this.updateVisualization();
+    }
 
+    async updateVisualization() {
         if (this.currentMode === 'custom') {
-            await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects);
+            await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
         }
@@ -114,7 +118,6 @@ export class MapComponent {
         }
 
         const rules: GenerationRule[] = [];
-
 
         for (const band of elevationBands) {
             const regionFeature = regionsMap.get(band.regionID);
@@ -145,7 +148,7 @@ export class MapComponent {
         this.isGenerating = false;
     }
 
-    async renderCustomElevation(min: number, max: number, aspects: string[] = []) {
+    async renderCustomElevation(min: number, max: number, aspects: string[], minSlope: number = 0) {
         await this.mapLoaded;
         if (!this.map) return;
 
@@ -154,6 +157,7 @@ export class MapComponent {
         this.customMin = min;
         this.customMax = max;
         this.customAspects = aspects;
+        this.customMinSlope = minSlope;
 
         // Global bounds for Euregio (approximate)
         const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
@@ -162,6 +166,7 @@ export class MapComponent {
             bounds: bounds,
             minElev: min,
             maxElev: max,
+            minSlope: minSlope,
             validAspects: aspects,
             color: '#0000FF', // Blue for custom mode
             properties: {}
@@ -330,6 +335,14 @@ export class MapComponent {
                             if (rule.validAspects && rule.validAspects.length > 0) {
                                 aspect = calculateAspect(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
                                 if (!aspect || !rule.validAspects.includes(aspect)) {
+                                    continue;
+                                }
+                            }
+
+                            // Check slope if defined
+                            if (rule.minSlope && rule.minSlope > 0) {
+                                const slope = calculateSlope(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
+                                if (slope === null || slope < rule.minSlope) {
                                     continue;
                                 }
                             }

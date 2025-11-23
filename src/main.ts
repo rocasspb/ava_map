@@ -24,6 +24,7 @@ const initApp = async () => {
     const applyBtn = document.getElementById('apply-custom');
     const minInput = document.getElementById('min-elev') as HTMLInputElement;
     const maxInput = document.getElementById('max-elev') as HTMLInputElement;
+    const minSlopeInput = document.getElementById('min-slope') as HTMLSelectElement;
 
     const aspectCheckboxes = document.querySelectorAll('input[name="aspect"]');
 
@@ -44,8 +45,9 @@ const initApp = async () => {
           customControls?.classList.remove('hidden');
           const min = parseInt(minInput.value);
           const max = parseInt(maxInput.value);
+          const minSlope = parseInt(minSlopeInput.value);
           const aspects = getSelectedAspects();
-          mapComponent.setCustomMode(true, min, max, aspects);
+          mapComponent.setCustomMode(true, min, max, aspects, minSlope);
         } else {
           customControls?.classList.add('hidden');
           mapComponent.setCustomMode(false);
@@ -56,8 +58,9 @@ const initApp = async () => {
     applyBtn?.addEventListener('click', () => {
       const min = parseInt(minInput.value);
       const max = parseInt(maxInput.value);
+      const minSlope = parseInt(minSlopeInput.value);
       const aspects = getSelectedAspects();
-      mapComponent.setCustomMode(true, min, max, aspects);
+      mapComponent.setCustomMode(true, min, max, aspects, minSlope);
     });
 
   } catch (error) {

@@ -47,3 +47,38 @@ export function calculateAspect(point: [number, number], queryElevation: Elevati
 
     return null;
 }
+
+/**
+ * Calculates the slope (steepness) in degrees at a given point.
+ * @param point The point to calculate slope for [longitude, latitude]
+ * @param queryElevation A function that returns the elevation at a given point
+ * @returns The slope in degrees or null if elevation data is missing
+ */
+export function calculateSlope(point: [number, number], queryElevation: ElevationQuery): number | null {
+    const [lng, lat] = point;
+    const offset = 0.0005; // Small offset for gradient calculation
+
+    // Get elevations of surrounding points
+    const zN = queryElevation([lng, lat + offset]);
+    const zS = queryElevation([lng, lat - offset]);
+    const zE = queryElevation([lng + offset, lat]);
+    const zW = queryElevation([lng - offset, lat]);
+
+    if (zN === null || zS === null || zE === null || zW === null) return null;
+
+    // Calculate distances in meters
+    // 1 degree latitude ~= 111,111 meters
+    const distY = 2 * offset * 111111;
+    // 1 degree longitude ~= 111,111 * cos(latitude) meters
+    const distX = 2 * offset * 111111 * Math.cos(lat * Math.PI / 180);
+
+    // Calculate gradients (dz/dx and dz/dy)
+    const dz_dx = (zE - zW) / distX;
+    const dz_dy = (zN - zS) / distY;
+
+    // Calculate slope in degrees
+    const slopeRad = Math.atan(Math.sqrt(dz_dx * dz_dx + dz_dy * dz_dy));
+    const slopeDeg = slopeRad * (180 / Math.PI);
+
+    return slopeDeg;
+}
