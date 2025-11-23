@@ -289,6 +289,15 @@ export class MapComponent {
 
                     if (elevation !== null && elevation !== undefined) {
                         if (elevation >= band.minElev && elevation <= band.maxElev) {
+                            // Check aspect if specific aspects are defined for this band
+                            let aspect: string | null = null;
+                            if (band.validAspects && band.validAspects.length > 0) {
+                                aspect = this.calculateAspect(point);
+                                if (!aspect || !band.validAspects.includes(aspect)) {
+                                    continue;
+                                }
+                            }
+
                             features.push({
                                 type: 'Feature',
                                 geometry: {
@@ -299,7 +308,8 @@ export class MapComponent {
                                     regionId: band.regionID,
                                     dangerLevel: band.dangerLevel,
                                     color: color,
-                                    elevation: elevation
+                                    elevation: elevation,
+                                    aspect: aspect
                                 }
                             });
                         }
@@ -321,7 +331,7 @@ export class MapComponent {
         const currentZoom = this.map!.getZoom();
         const baseSpacing = 0.005; // Approx 500m at zoom 8
         const baseZoom = 8;
-        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.5, baseZoom - currentZoom);
+        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.2, baseZoom - currentZoom);
 
         // Clamp spacing
         GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0002);
