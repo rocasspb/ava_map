@@ -359,10 +359,6 @@ export class MapComponent {
         };
     }
 
-
-
-
-
     private getDangerColor(level: string): string {
         switch (level) {
             case 'low': return '#CCFF66'; // 1 - Green
