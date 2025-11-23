@@ -2,8 +2,18 @@ import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
-import type { ElevationBand } from '../utils/data-processing';
+
 import { isPointInPolygon, isPointInMultiPolygon } from '../utils/geometry';
+
+interface GenerationRule {
+    bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number };
+    geometry?: any;
+    minElev: number;
+    maxElev: number;
+    validAspects?: string[];
+    color: string;
+    properties: any;
+}
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
@@ -102,7 +112,31 @@ export class MapComponent {
             });
         }
 
-        const pointsFeatures = await this.generateElevationPoints(elevationBands, regionsMap);
+        const rules: GenerationRule[] = [];
+
+
+        for (const band of elevationBands) {
+            const regionFeature = regionsMap.get(band.regionID);
+            if (!regionFeature) continue;
+
+            const regionBounds = this.getBounds(regionFeature);
+            const color = this.getDangerColor(band.dangerLevel);
+
+            rules.push({
+                bounds: regionBounds,
+                geometry: regionFeature.geometry,
+                minElev: band.minElev,
+                maxElev: band.maxElev,
+                validAspects: band.validAspects,
+                color: color,
+                properties: {
+                    regionId: band.regionID,
+                    dangerLevel: band.dangerLevel
+                }
+            });
+        }
+
+        const pointsFeatures = await this.generatePoints(rules);
         this.updatePointSource(pointsFeatures);
         this.addPointLayer();
         this.addOutlineLayer(regionsGeoJSON);
@@ -123,7 +157,16 @@ export class MapComponent {
         // Global bounds for Euregio (approximate)
         const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
 
-        const pointsFeatures = await this.generateGlobalPoints(bounds, min, max, aspects);
+        const rule: GenerationRule = {
+            bounds: bounds,
+            minElev: min,
+            maxElev: max,
+            validAspects: aspects,
+            color: '#0000FF', // Blue for custom mode
+            properties: {}
+        };
+
+        const pointsFeatures = await this.generatePoints([rule]);
         this.updatePointSource(pointsFeatures);
         this.addPointLayer();
 
@@ -234,7 +277,7 @@ export class MapComponent {
         this.map!.getCanvas().style.cursor = '';
     }
 
-    private async generateElevationPoints(bands: ElevationBand[], regionsMap: Map<string, any>): Promise<any> {
+    private async generatePoints(rules: GenerationRule[]): Promise<any> {
         const features: any[] = [];
 
         // Dynamic grid spacing based on zoom
@@ -242,8 +285,6 @@ export class MapComponent {
         const baseSpacing = 0.01; // at zoom 8
         const baseZoom = 8;
         // Formula: spacing decreases as zoom increases (density increases)
-        // We want spacing to be smaller when zoom is higher.
-        // Using 1.2 instead of 2 to make it less aggressive (points will visually spread out slightly as you zoom in)
         let GRID_SPACING_DEG = baseSpacing * Math.pow(1.2, baseZoom - currentZoom);
 
         // Clamp spacing to avoid performance issues
@@ -252,48 +293,42 @@ export class MapComponent {
 
         const mapBounds = this.map!.getBounds();
 
-        for (const band of bands) {
-            const regionFeature = regionsMap.get(band.regionID);
-            if (!regionFeature) continue;
+        for (const rule of rules) {
+            // Intersect rule bounds with map bounds to only generate visible points
+            const minLng = Math.max(rule.bounds.minLng, mapBounds.getWest());
+            const maxLng = Math.min(rule.bounds.maxLng, mapBounds.getEast());
+            const minLat = Math.max(rule.bounds.minLat, mapBounds.getSouth());
+            const maxLat = Math.min(rule.bounds.maxLat, mapBounds.getNorth());
 
-            const regionBounds = this.getBounds(regionFeature);
-
-            // Intersect region bounds with map bounds to only generate visible points
-            const minLng = Math.max(regionBounds.minLng, mapBounds.getWest());
-            const maxLng = Math.min(regionBounds.maxLng, mapBounds.getEast());
-            const minLat = Math.max(regionBounds.minLat, mapBounds.getSouth());
-            const maxLat = Math.min(regionBounds.maxLat, mapBounds.getNorth());
-
-            // Skip if region is not visible
+            // Skip if rule region is not visible
             if (minLng > maxLng || minLat > maxLat) continue;
-
-            const color = this.getDangerColor(band.dangerLevel);
 
             // Generate grid points
             for (let lng = minLng; lng <= maxLng; lng += GRID_SPACING_DEG) {
                 for (let lat = minLat; lat <= maxLat; lat += GRID_SPACING_DEG) {
                     const point: [number, number] = [lng, lat];
 
-                    // 1. Check if point is inside region polygon
-                    let isInside = false;
-                    if (regionFeature.geometry.type === 'Polygon') {
-                        isInside = isPointInPolygon(point, regionFeature.geometry.coordinates);
-                    } else if (regionFeature.geometry.type === 'MultiPolygon') {
-                        isInside = isPointInMultiPolygon(point, regionFeature.geometry.coordinates);
+                    // 1. Check if point is inside region polygon (if geometry exists)
+                    if (rule.geometry) {
+                        let isInside = false;
+                        if (rule.geometry.type === 'Polygon') {
+                            isInside = isPointInPolygon(point, rule.geometry.coordinates);
+                        } else if (rule.geometry.type === 'MultiPolygon') {
+                            isInside = isPointInMultiPolygon(point, rule.geometry.coordinates);
+                        }
+                        if (!isInside) continue;
                     }
-
-                    if (!isInside) continue;
 
                     // 2. Check elevation
                     const elevation = this.map?.queryTerrainElevation(point);
 
                     if (elevation !== null && elevation !== undefined) {
-                        if (elevation >= band.minElev && elevation <= band.maxElev) {
-                            // Check aspect if specific aspects are defined for this band
+                        if (elevation >= rule.minElev && elevation <= rule.maxElev) {
+                            // Check aspect if specific aspects are defined for this rule
                             let aspect: string | null = null;
-                            if (band.validAspects && band.validAspects.length > 0) {
+                            if (rule.validAspects && rule.validAspects.length > 0) {
                                 aspect = this.calculateAspect(point);
-                                if (!aspect || !band.validAspects.includes(aspect)) {
+                                if (!aspect || !rule.validAspects.includes(aspect)) {
                                     continue;
                                 }
                             }
@@ -305,82 +340,13 @@ export class MapComponent {
                                     coordinates: point
                                 },
                                 properties: {
-                                    regionId: band.regionID,
-                                    dangerLevel: band.dangerLevel,
-                                    color: color,
+                                    ...rule.properties,
+                                    color: rule.color,
                                     elevation: elevation,
                                     aspect: aspect
                                 }
                             });
                         }
-                    }
-                }
-            }
-        }
-
-        return {
-            type: 'FeatureCollection',
-            features: features
-        };
-    }
-
-    private async generateGlobalPoints(bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number }, minElev: number, maxElev: number, selectedAspects: string[]): Promise<any> {
-        const features: any[] = [];
-
-        // Dynamic grid spacing based on zoom
-        const currentZoom = this.map!.getZoom();
-        const baseSpacing = 0.005; // Approx 500m at zoom 8
-        const baseZoom = 8;
-        let GRID_SPACING_DEG = baseSpacing * Math.pow(1.2, baseZoom - currentZoom);
-
-        // Clamp spacing
-        GRID_SPACING_DEG = Math.max(GRID_SPACING_DEG, 0.0002);
-        GRID_SPACING_DEG = Math.min(GRID_SPACING_DEG, 0.02);
-
-        const mapBounds = this.map!.getBounds();
-
-        // Intersect global bounds with map bounds
-        const minLng = Math.max(bounds.minLng, mapBounds.getWest());
-        const maxLng = Math.min(bounds.maxLng, mapBounds.getEast());
-        const minLat = Math.max(bounds.minLat, mapBounds.getSouth());
-        const maxLat = Math.min(bounds.maxLat, mapBounds.getNorth());
-
-        // Skip if not visible
-        if (minLng > maxLng || minLat > maxLat) {
-            return {
-                type: 'FeatureCollection',
-                features: []
-            };
-        }
-
-        for (let lng = minLng; lng <= maxLng; lng += GRID_SPACING_DEG) {
-            for (let lat = minLat; lat <= maxLat; lat += GRID_SPACING_DEG) {
-                const point: [number, number] = [lng, lat];
-                const elevation = this.map?.queryTerrainElevation(point);
-
-                if (elevation !== null && elevation !== undefined) {
-                    if (elevation >= minElev && elevation <= maxElev) {
-                        // Check aspect if specific aspects are selected
-                        let aspect: string | null = null;
-                        if (selectedAspects.length > 0) {
-                            aspect = this.calculateAspect(point);
-                            if (!aspect || !selectedAspects.includes(aspect)) {
-                                continue;
-                            }
-                        }
-
-                        features.push({
-                            type: 'Feature',
-                            geometry: {
-                                type: 'Point',
-                                coordinates: point
-                            },
-                            properties: {
-                                color: '#0000FF', // Blue for custom mode
-                                elevation: elevation,
-                                aspect: aspect
-                            }
-                        });
                     }
                 }
             }
