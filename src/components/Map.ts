@@ -2,12 +2,16 @@ import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
+import type { ElevationBand } from '../utils/data-processing';
+import { isPointInPolygon, isPointInMultiPolygon } from '../utils/geometry';
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
     private containerId: string;
     private mapLoaded: Promise<void>;
     private resolveMapLoaded!: () => void;
+    private lastAvalancheData: CaamlData | null = null;
+    private lastRegionsGeoJSON: any | null = null;
 
     constructor(containerId: string) {
         this.containerId = containerId;
@@ -42,17 +46,24 @@ export class MapComponent {
         });
     }
 
+    async setCustomMode(enabled: boolean, min: number = 0, max: number = 9000, aspects: string[] = []) {
+        if (enabled) {
+            await this.renderCustomElevation(min, max, aspects);
+        } else {
+            if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
+                await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
+            }
+        }
+    }
+
     async renderAvalancheData(data: CaamlData, regionsGeoJSON: any) {
         await this.mapLoaded;
         if (!this.map) return;
 
-        const elevationBands = processRegionElevations(data);
+        this.lastAvalancheData = data;
+        this.lastRegionsGeoJSON = regionsGeoJSON;
 
-        // Create a new FeatureCollection for the bands
-        const bandsFeatures = {
-            type: 'FeatureCollection' as const,
-            features: [] as any[]
-        };
+        const elevationBands = processRegionElevations(data);
 
         // Map regions by ID for easy lookup
         const regionsMap = new Map<string, any>();
@@ -62,83 +73,293 @@ export class MapComponent {
             });
         }
 
-        elevationBands.forEach(band => {
+        const pointsFeatures = await this.generateElevationPoints(elevationBands, regionsMap);
+        this.updatePointSource(pointsFeatures);
+        this.addPointLayer();
+        this.addOutlineLayer(regionsGeoJSON);
+        this.setupInteractions();
+    }
+
+    async renderCustomElevation(min: number, max: number, aspects: string[] = []) {
+        await this.mapLoaded;
+        if (!this.map) return;
+
+        // Global bounds for Euregio (approximate)
+        const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
+
+        const pointsFeatures = await this.generateGlobalPoints(bounds, min, max, aspects);
+        this.updatePointSource(pointsFeatures);
+        this.addPointLayer();
+
+        // Remove outlines in custom mode if they exist
+        if (this.map.getLayer('regions-outline')) {
+            this.map.removeLayer('regions-outline');
+        }
+        if (this.map.getSource('regions-outline-source')) {
+            this.map.removeSource('regions-outline-source');
+        }
+    }
+
+    private updatePointSource(features: any) {
+        if (this.map!.getSource('avalanche-points')) {
+            (this.map!.getSource('avalanche-points') as maptiler.GeoJSONSource).setData(features);
+        } else {
+            this.map!.addSource('avalanche-points', {
+                type: 'geojson',
+                data: features
+            });
+        }
+    }
+
+    private addPointLayer() {
+        if (!this.map!.getLayer('avalanche-points-layer')) {
+            this.map!.addLayer({
+                id: 'avalanche-points-layer',
+                type: 'circle',
+                source: 'avalanche-points',
+                paint: {
+                    'circle-color': ['get', 'color'],
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        8, 2,
+                        12, 5,
+                        15, 10
+                    ],
+                    'circle-opacity': 0.6,
+                    'circle-pitch-alignment': 'map'
+                }
+            });
+        }
+    }
+
+    private addOutlineLayer(regionsGeoJSON: any) {
+        if (!this.map!.getSource('regions-outline-source')) {
+            this.map!.addSource('regions-outline-source', {
+                type: 'geojson',
+                data: regionsGeoJSON
+            });
+        }
+
+        if (!this.map!.getLayer('regions-outline')) {
+            this.map!.addLayer({
+                id: 'regions-outline',
+                type: 'line',
+                source: 'regions-outline-source',
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': 1,
+                    'line-opacity': 0.3
+                }
+            });
+        }
+    }
+
+    private setupInteractions() {
+        // Remove existing listeners to avoid duplicates if called multiple times
+        this.map!.off('click', 'avalanche-points-layer', this.handlePointClick);
+        this.map!.off('mouseenter', 'avalanche-points-layer', this.handleMouseEnter);
+        this.map!.off('mouseleave', 'avalanche-points-layer', this.handleMouseLeave);
+
+        this.map!.on('click', 'avalanche-points-layer', this.handlePointClick);
+        this.map!.on('mouseenter', 'avalanche-points-layer', this.handleMouseEnter);
+        this.map!.on('mouseleave', 'avalanche-points-layer', this.handleMouseLeave);
+    }
+
+    private handlePointClick = (e: any) => {
+        if (e.features && e.features.length > 0) {
+            const feature = e.features[0];
+            const regionId = feature.properties['regionId'];
+            const danger = feature.properties['dangerLevel'];
+            const elevation = feature.properties['elevation'];
+            const aspect = feature.properties['aspect'];
+
+            let html = `<p>Elevation: ${Math.round(elevation)}m</p>`;
+            if (aspect) {
+                html += `<p>Aspect: ${aspect}</p>`;
+            }
+            if (regionId) {
+                html = `<h3>Region: ${regionId}</h3>
+                        <p>Danger Level: ${danger}</p>` + html;
+            }
+
+            new maptiler.Popup()
+                .setLngLat(e.lngLat)
+                .setHTML(html)
+                .addTo(this.map!);
+        }
+    }
+
+    private handleMouseEnter = () => {
+        this.map!.getCanvas().style.cursor = 'pointer';
+    }
+
+    private handleMouseLeave = () => {
+        this.map!.getCanvas().style.cursor = '';
+    }
+
+    private async generateElevationPoints(bands: ElevationBand[], regionsMap: Map<string, any>): Promise<any> {
+        const features: any[] = [];
+        const GRID_SPACING_DEG = 0.001; // Approx 100m
+
+        for (const band of bands) {
             const regionFeature = regionsMap.get(band.regionID);
-            if (regionFeature) {
-                // Clone feature and add elevation properties
-                const bandFeature = JSON.parse(JSON.stringify(regionFeature));
-                bandFeature.properties.min_elev = band.minElev;
-                bandFeature.properties.max_elev = band.maxElev;
-                bandFeature.properties.color = this.getDangerColor(band.dangerLevel);
-                bandFeature.properties.dangerLevel = band.dangerLevel;
-                bandsFeatures.features.push(bandFeature);
+            if (!regionFeature) continue;
+
+            const bounds = this.getBounds(regionFeature);
+            const color = this.getDangerColor(band.dangerLevel);
+
+            // Generate grid points
+            for (let lng = bounds.minLng; lng <= bounds.maxLng; lng += GRID_SPACING_DEG) {
+                for (let lat = bounds.minLat; lat <= bounds.maxLat; lat += GRID_SPACING_DEG) {
+                    const point: [number, number] = [lng, lat];
+
+                    // 1. Check if point is inside region polygon
+                    let isInside = false;
+                    if (regionFeature.geometry.type === 'Polygon') {
+                        isInside = isPointInPolygon(point, regionFeature.geometry.coordinates);
+                    } else if (regionFeature.geometry.type === 'MultiPolygon') {
+                        isInside = isPointInMultiPolygon(point, regionFeature.geometry.coordinates);
+                    }
+
+                    if (!isInside) continue;
+
+                    // 2. Check elevation
+                    const elevation = this.map?.queryTerrainElevation(point);
+
+                    if (elevation !== null && elevation !== undefined) {
+                        if (elevation >= band.minElev && elevation <= band.maxElev) {
+                            features.push({
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: point
+                                },
+                                properties: {
+                                    regionId: band.regionID,
+                                    dangerLevel: band.dangerLevel,
+                                    color: color,
+                                    elevation: elevation
+                                }
+                            });
+                        }
+                    }
+                }
             }
-        });
+        }
 
-        // Add source
-        this.map.addSource('avalanche-bands', {
-            type: 'geojson',
-            data: bandsFeatures
-        });
+        return {
+            type: 'FeatureCollection',
+            features: features
+        };
+    }
 
-        // Add fill-extrusion layer
-        this.map.addLayer({
-            id: 'avalanche-extrusion',
-            type: 'fill-extrusion',
-            source: 'avalanche-bands',
-            paint: {
-                'fill-extrusion-color': ['get', 'color'],
-                'fill-extrusion-height': ['get', 'max_elev'],
-                'fill-extrusion-base': ['get', 'min_elev'],
-                'fill-extrusion-opacity': 0.6
+    private async generateGlobalPoints(bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number }, minElev: number, maxElev: number, selectedAspects: string[]): Promise<any> {
+        const features: any[] = [];
+        const GRID_SPACING_DEG = 0.005; // Approx 500m
+
+        for (let lng = bounds.minLng; lng <= bounds.maxLng; lng += GRID_SPACING_DEG) {
+            for (let lat = bounds.minLat; lat <= bounds.maxLat; lat += GRID_SPACING_DEG) {
+                const point: [number, number] = [lng, lat];
+                const elevation = this.map?.queryTerrainElevation(point);
+
+                if (elevation !== null && elevation !== undefined) {
+                    if (elevation >= minElev && elevation <= maxElev) {
+                        // Check aspect if specific aspects are selected
+                        let aspect: string | null = null;
+                        if (selectedAspects.length > 0) {
+                            aspect = this.calculateAspect(point);
+                            if (!aspect || !selectedAspects.includes(aspect)) {
+                                continue;
+                            }
+                        }
+
+                        features.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: point
+                            },
+                            properties: {
+                                color: '#0000FF', // Blue for custom mode
+                                elevation: elevation,
+                                aspect: aspect
+                            }
+                        });
+                    }
+                }
             }
-        });
+        }
 
-        // Add outline layer (optional, maybe keep original regions for context?)
-        // Let's keep the original regions outline but maybe thinner or different color
-        this.map.addSource('regions-outline-source', {
-            type: 'geojson',
-            data: regionsGeoJSON
-        });
+        return {
+            type: 'FeatureCollection',
+            features: features
+        };
+    }
 
-        this.map.addLayer({
-            id: 'regions-outline',
-            type: 'line',
-            source: 'regions-outline-source',
-            paint: {
-                'line-color': '#000000',
-                'line-width': 1,
-                'line-opacity': 0.3
-            }
-        });
+    private calculateAspect(point: [number, number]): string | null {
+        if (!this.map) return null;
 
-        // Add click event
-        this.map.on('click', 'avalanche-extrusion', (e) => {
-            if (e.features && e.features.length > 0) {
-                const feature = e.features[0];
-                const regionId = feature.properties['id'];
-                const danger = feature.properties['dangerLevel'];
-                const min = feature.properties['min_elev'];
-                const max = feature.properties['max_elev'];
+        const [lng, lat] = point;
+        const offset = 0.001; // Small offset for gradient calculation
 
-                new maptiler.Popup()
-                    .setLngLat(e.lngLat)
-                    .setHTML(`
-                        <h3>Region: ${regionId}</h3>
-                        <p>Danger Level: ${danger}</p>
-                        <p>Elevation: ${min}m - ${max}m</p>
-                    `)
-                    .addTo(this.map!);
-            }
-        });
+        // Get elevations of surrounding points
+        const z0 = this.map.queryTerrainElevation([lng, lat]);
+        const zN = this.map.queryTerrainElevation([lng, lat + offset]);
+        const zE = this.map.queryTerrainElevation([lng + offset, lat]);
+        const zS = this.map.queryTerrainElevation([lng, lat - offset]);
+        const zW = this.map.queryTerrainElevation([lng - offset, lat]);
 
-        // Change cursor on hover
-        this.map.on('mouseenter', 'avalanche-extrusion', () => {
-            this.map!.getCanvas().style.cursor = 'pointer';
-        });
-        this.map.on('mouseleave', 'avalanche-extrusion', () => {
-            this.map!.getCanvas().style.cursor = '';
-        });
+        if (z0 === null || zN === null || zE === null || zS === null || zW === null) return null;
+
+        // Calculate slopes (dz/dx and dz/dy)
+        const dz_dx = ((zE - zW) / (2 * offset));
+        const dz_dy = ((zN - zS) / (2 * offset));
+
+        // Calculate aspect angle
+        // Gradient points uphill. Aspect faces downhill.
+        const downhillX = -dz_dx;
+        const downhillY = -dz_dy;
+
+        // Angle from East counter-clockwise
+        const angleFromEastCCW = Math.atan2(downhillY, downhillX) * (180 / Math.PI);
+
+        // Convert to Compass Bearing (0=N, 90=E, 180=S, 270=W)
+        let bearing = 90 - angleFromEastCCW;
+        if (bearing < 0) bearing += 360;
+
+        // Map to cardinal directions
+        if (bearing >= 337.5 || bearing < 22.5) return 'N';
+        if (bearing >= 22.5 && bearing < 67.5) return 'NE';
+        if (bearing >= 67.5 && bearing < 112.5) return 'E';
+        if (bearing >= 112.5 && bearing < 157.5) return 'SE';
+        if (bearing >= 157.5 && bearing < 202.5) return 'S';
+        if (bearing >= 202.5 && bearing < 247.5) return 'SW';
+        if (bearing >= 247.5 && bearing < 292.5) return 'W';
+        if (bearing >= 292.5 && bearing < 337.5) return 'NW';
+
+        return null;
+    }
+
+    private getBounds(feature: any) {
+        let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+
+        const processRing = (ring: number[][]) => {
+            ring.forEach(coord => {
+                const [lng, lat] = coord;
+                if (lng < minLng) minLng = lng;
+                if (lng > maxLng) maxLng = lng;
+                if (lat < minLat) minLat = lat;
+                if (lat > maxLat) maxLat = lat;
+            });
+        };
+
+        if (feature.geometry.type === 'Polygon') {
+            processRing(feature.geometry.coordinates[0]);
+        } else if (feature.geometry.type === 'MultiPolygon') {
+            feature.geometry.coordinates.forEach((poly: any) => processRing(poly[0]));
+        }
+
+        return { minLng, maxLng, minLat, maxLat };
     }
 
     private getDangerColor(level: string): string {

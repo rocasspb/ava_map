@@ -1,15 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Avalanche Awareness</title>
-  </head>
-  <body>
-    <div id="app">
-      <div id="map"></div>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avalanche Awareness</title>
+</head>
+
+<body>
+  <div id="app">
+    <div id="map"></div>
+    <div id="controls">
+      <h3>Visualization Mode</h3>
+      <div class="mode-toggle">
+        <label>
+          <input type="radio" name="mode" value="avalanche" checked> Avalanche Risk
+        </label>
+        <label>
+          <input type="radio" name="mode" value="custom"> Custom Elevation
+        </label>
+      </div>
+      <div id="custom-controls" class="hidden">
+        <div class="input-group">
+          <label>Min Elevation (m)</label>
+          <input type="number" id="min-elev" value="1500" step="100">
+        </div>
+        <div class="input-group">
+          <label>Max Elevation (m)</label>
+          <input type="number" id="max-elev" value="2500" step="100">
+        </div>
+        <div class="input-group">
+          <label>Aspects</label>
+          <div class="aspect-grid">
+            <label><input type="checkbox" name="aspect" value="N" checked> N</label>
+            <label><input type="checkbox" name="aspect" value="NE" checked> NE</label>
+            <label><input type="checkbox" name="aspect" value="E" checked> E</label>
+            <label><input type="checkbox" name="aspect" value="SE" checked> SE</label>
+            <label><input type="checkbox" name="aspect" value="S" checked> S</label>
+            <label><input type="checkbox" name="aspect" value="SW" checked> SW</label>
+            <label><input type="checkbox" name="aspect" value="W" checked> W</label>
+            <label><input type="checkbox" name="aspect" value="NW" checked> NW</label>
+          </div>
+        </div>
+        <button id="apply-custom">Apply</button>
+      </div>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>

@@ -10,6 +10,7 @@ export interface ElevationBand {
     dangerLevel: string;
     minElev: number;
     maxElev: number;
+    validAspects?: string[];
 }
 
 export function processAvalancheData(data: CaamlData): Map<string, DangerRating> {
@@ -71,12 +72,31 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
 
                 // Let's look at the DangerRatings first as they directly correlate to the color.
                 bulletin.dangerRatings.forEach(rating => {
-                    const { min, max } = parseElevation(rating.elevation);
+                    const { min: rMin, max: rMax } = parseElevation(rating.elevation);
+
+                    // Find matching problems based on elevation overlap
+                    let aspects: string[] | undefined = undefined;
+                    const matchingProblems = bulletin.avalancheProblems.filter(p => {
+                        const { min: pMin, max: pMax } = parseElevation(p.elevation);
+                        // Check overlap
+                        return (rMin < pMax && rMax > pMin);
+                    });
+
+                    if (matchingProblems.length > 0) {
+                        // Collect unique aspects from all matching problems
+                        const aspectSet = new Set<string>();
+                        matchingProblems.forEach(p => {
+                            p.aspects.forEach(a => aspectSet.add(a));
+                        });
+                        aspects = Array.from(aspectSet);
+                    }
+
                     bands.push({
                         regionID: region.regionID,
                         dangerLevel: rating.mainValue,
-                        minElev: min,
-                        maxElev: max
+                        minElev: rMin,
+                        maxElev: rMax,
+                        validAspects: aspects
                     });
                 });
             });
@@ -89,7 +109,8 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                         regionID: region.regionID,
                         dangerLevel: maxDanger.mainValue,
                         minElev: 0,
-                        maxElev: 9000
+                        maxElev: 9000,
+                        validAspects: undefined
                     });
                 });
             }

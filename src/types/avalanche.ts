@@ -50,6 +50,7 @@ export interface DangerRating {
     lowerBound?: string;
     upperBound?: string;
   };
+  validAspects?: string[];
   validTimePeriod: string;
 }
 

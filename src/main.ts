@@ -17,6 +17,49 @@ const initApp = async () => {
     console.log('Regions GeoJSON:', regionsGeoJSON);
 
     await mapComponent.renderAvalancheData(avalancheData, regionsGeoJSON);
+
+    // UI Controls
+    const modeRadios = document.querySelectorAll('input[name="mode"]');
+    const customControls = document.getElementById('custom-controls');
+    const applyBtn = document.getElementById('apply-custom');
+    const minInput = document.getElementById('min-elev') as HTMLInputElement;
+    const maxInput = document.getElementById('max-elev') as HTMLInputElement;
+
+    const aspectCheckboxes = document.querySelectorAll('input[name="aspect"]');
+
+    const getSelectedAspects = () => {
+      const aspects: string[] = [];
+      aspectCheckboxes.forEach((cb) => {
+        if ((cb as HTMLInputElement).checked) {
+          aspects.push((cb as HTMLInputElement).value);
+        }
+      });
+      return aspects;
+    };
+
+    modeRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const mode = (e.target as HTMLInputElement).value;
+        if (mode === 'custom') {
+          customControls?.classList.remove('hidden');
+          const min = parseInt(minInput.value);
+          const max = parseInt(maxInput.value);
+          const aspects = getSelectedAspects();
+          mapComponent.setCustomMode(true, min, max, aspects);
+        } else {
+          customControls?.classList.add('hidden');
+          mapComponent.setCustomMode(false);
+        }
+      });
+    });
+
+    applyBtn?.addEventListener('click', () => {
+      const min = parseInt(minInput.value);
+      const max = parseInt(maxInput.value);
+      const aspects = getSelectedAspects();
+      mapComponent.setCustomMode(true, min, max, aspects);
+    });
+
   } catch (error) {
     console.error('Failed to initialize app:', error);
   }
