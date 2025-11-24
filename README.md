@@ -1,8 +1,8 @@
 # Avalanche Awareness Map
 A tool to assess avalanche terrain, based on the slope parameters and regional avalanche forecast.
 
-![Slope steepness](src/docs/img/readme_img.png)
 ![Avalanche danger](src/docs/img/bulletins.png)
+![Slope steepness](src/docs/img/readme_img.png)
 
 ## Features
 
