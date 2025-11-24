@@ -1,3 +1,5 @@
+import { ASPECT_CALCULATION_OFFSET, SLOPE_CALCULATION_OFFSET, METERS_PER_DEGREE } from '../config';
+
 export type ElevationQuery = (point: [number, number]) => number | null;
 
 /**
@@ -8,7 +10,7 @@ export type ElevationQuery = (point: [number, number]) => number | null;
  */
 export function calculateAspect(point: [number, number], queryElevation: ElevationQuery): string | null {
     const [lng, lat] = point;
-    const offset = 0.001; // Small offset for gradient calculation
+    const offset = ASPECT_CALCULATION_OFFSET; // Small offset for gradient calculation
 
     // Get elevations of surrounding points
     const z0 = queryElevation([lng, lat]);
@@ -56,7 +58,7 @@ export function calculateAspect(point: [number, number], queryElevation: Elevati
  */
 export function calculateSlope(point: [number, number], queryElevation: ElevationQuery): number | null {
     const [lng, lat] = point;
-    const offset = 0.0001; // Small offset for gradient calculation
+    const offset = SLOPE_CALCULATION_OFFSET; // Small offset for gradient calculation
 
     // Get elevations of surrounding points
     const zN = queryElevation([lng, lat + offset]);
@@ -68,9 +70,9 @@ export function calculateSlope(point: [number, number], queryElevation: Elevatio
 
     // Calculate distances in meters
     // 1 degree latitude ~= 111,111 meters
-    const distY = 2 * offset * 111111;
+    const distY = 2 * offset * METERS_PER_DEGREE;
     // 1 degree longitude ~= 111,111 * cos(latitude) meters
-    const distX = 2 * offset * 111111 * Math.cos(lat * Math.PI / 180);
+    const distX = 2 * offset * METERS_PER_DEGREE * Math.cos(lat * Math.PI / 180);
 
     // Calculate gradients (dz/dx and dz/dy)
     const dz_dx = (zE - zW) / distX;

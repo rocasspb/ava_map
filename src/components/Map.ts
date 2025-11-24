@@ -2,6 +2,7 @@ import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
+import * as config from '../config';
 
 import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
 import { calculateAspect, calculateSlope } from '../utils/geo-utils';
@@ -26,9 +27,9 @@ export class MapComponent {
     private lastRegionsGeoJSON: any | null = null;
 
     // State for dynamic updates
-    private currentMode: 'avalanche' | 'custom' | 'steepness' = 'avalanche';
-    private customMin: number = 0;
-    private customMax: number = 9000;
+    private currentMode: config.VisualizationMode = config.MODES.AVALANCHE;
+    private customMin: number = config.DEFAULT_CUSTOM_MIN_ELEV;
+    private customMax: number = config.DEFAULT_CUSTOM_MAX_ELEV;
     private customAspects: string[] = [];
     private customMinSlope: number = 0;
     private isGenerating: boolean = false;
@@ -44,9 +45,9 @@ export class MapComponent {
     initMap() {
         this.map = new maptiler.Map({
             container: this.containerId,
-            style: maptiler.MapStyle.OUTDOOR,
-            center: [11.3, 46.5], // Approximate center of Euregio
-            zoom: 8,
+            style: config.MAP_STYLE,
+            center: config.DEFAULT_CENTER,
+            zoom: config.DEFAULT_ZOOM,
         });
 
         this.map.on('load', () => {
@@ -55,11 +56,11 @@ export class MapComponent {
             // Add terrain
             this.map!.addSource('maptiler_terrain', {
                 type: 'raster-dem',
-                url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${maptiler.config.apiKey}`
+                url: `${config.TERRAIN_SOURCE_URL_PREFIX}${maptiler.config.apiKey}`
             });
             this.map!.setTerrain({
                 source: 'maptiler_terrain',
-                exaggeration: 1
+                exaggeration: config.TERRAIN_EXAGGERATION
             });
 
             // Add moveend listener for dynamic updates
@@ -74,7 +75,7 @@ export class MapComponent {
     //TODO rework setCustomMode and setSteepnessMode to be an universal mode switch
     async setCustomMode(enabled: boolean, min?: number, max?: number, aspects?: string[], minSlope?: number) {
         if (enabled) {
-            this.currentMode = 'custom';
+            this.currentMode = config.MODES.CUSTOM;
             if (min !== undefined) this.customMin = min;
             if (max !== undefined) this.customMax = max;
             if (aspects !== undefined) this.customAspects = aspects;
@@ -84,17 +85,17 @@ export class MapComponent {
             // If disabling custom mode, we might be going back to avalanche or steepness.
             // For now, let's default to avalanche if just toggling custom off, 
             // but the UI should handle explicit mode switches.
-            this.currentMode = 'avalanche';
+            this.currentMode = config.MODES.AVALANCHE;
             this.updateVisualization();
         }
     }
 
     async setSteepnessMode(enabled: boolean) {
         if (enabled) {
-            this.currentMode = 'steepness';
+            this.currentMode = config.MODES.STEEPNESS;
             await this.renderSteepness();
         } else {
-            this.currentMode = 'avalanche';
+            this.currentMode = config.MODES.AVALANCHE;
             this.updateVisualization();
         }
     }
@@ -105,9 +106,9 @@ export class MapComponent {
     }
 
     async updateVisualization() {
-        if (this.currentMode === 'custom') {
+        if (this.currentMode === config.MODES.CUSTOM) {
             await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
-        } else if (this.currentMode === 'steepness') {
+        } else if (this.currentMode === config.MODES.STEEPNESS) {
             await this.renderSteepness();
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
@@ -121,7 +122,7 @@ export class MapComponent {
         this.isGenerating = true;
         this.lastAvalancheData = data;
         this.lastRegionsGeoJSON = regionsGeoJSON;
-        this.currentMode = 'avalanche';
+        this.currentMode = config.MODES.AVALANCHE;
 
         const elevationBands = processRegionElevations(data);
 
@@ -169,14 +170,14 @@ export class MapComponent {
         if (!this.map) return;
 
         this.isGenerating = true;
-        this.currentMode = 'custom';
+        this.currentMode = config.MODES.CUSTOM;
         this.customMin = min;
         this.customMax = max;
         this.customAspects = aspects;
         this.customMinSlope = minSlope;
 
         // Global bounds for Euregio (approximate)
-        const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
+        const bounds = config.EUREGIO_BOUNDS;
 
         const rule: GenerationRule = {
             bounds: bounds,
@@ -184,7 +185,7 @@ export class MapComponent {
             maxElev: max,
             minSlope: minSlope,
             validAspects: aspects,
-            color: '#0000FF', // Blue for custom mode
+            color: config.CUSTOM_MODE_COLOR,
             properties: {}
         };
 
@@ -207,39 +208,21 @@ export class MapComponent {
         if (!this.map) return;
 
         this.isGenerating = true;
-        this.currentMode = 'steepness';
+        this.currentMode = config.MODES.STEEPNESS;
 
         // Global bounds for Euregio (approximate)
-        const bounds = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
+        const bounds = config.EUREGIO_BOUNDS;
 
         // Define steepness bands
         // We order them so that higher steepness (Red) is drawn last (on top)
-        const orderedRules: GenerationRule[] = [
-            {
-                bounds: bounds,
-                minElev: 0,
-                maxElev: 9000,
-                minSlope: 30,
-                color: '#FFFF33', // Yellow
-                properties: { steepness: '> 30°' }
-            },
-            {
-                bounds: bounds,
-                minElev: 0,
-                maxElev: 9000,
-                minSlope: 35,
-                color: '#FF9900', // Orange
-                properties: { steepness: '> 35°' }
-            },
-            {
-                bounds: bounds,
-                minElev: 0,
-                maxElev: 9000,
-                minSlope: 40,
-                color: '#FF0000', // Red
-                properties: { steepness: '> 40°' }
-            }
-        ];
+        const orderedRules: GenerationRule[] = config.STEEPNESS_THRESHOLDS.map(t => ({
+            bounds: bounds,
+            minElev: config.DEFAULT_CUSTOM_MIN_ELEV,
+            maxElev: config.DEFAULT_CUSTOM_MAX_ELEV,
+            minSlope: t.minSlope,
+            color: t.color,
+            properties: { steepness: t.label }
+        }));
 
         const pointsFeatures = await this.generatePoints(orderedRules);
         this.updatePointSource(pointsFeatures);
@@ -276,11 +259,9 @@ export class MapComponent {
                     'circle-color': ['get', 'color'],
                     'circle-radius': [
                         'interpolate', ['linear'], ['zoom'],
-                        8, 2,
-                        12, 5,
-                        15, 10
+                        ...config.POINT_RADIUS_STOPS.flat()
                     ],
-                    'circle-opacity': 0.6,
+                    'circle-opacity': config.POINT_OPACITY,
                     'circle-pitch-alignment': 'map'
                 }
             });
@@ -301,9 +282,9 @@ export class MapComponent {
                 type: 'line',
                 source: 'regions-outline-source',
                 paint: {
-                    'line-color': '#000000',
-                    'line-width': 1,
-                    'line-opacity': 0.3
+                    'line-color': config.OUTLINE_COLOR,
+                    'line-width': config.OUTLINE_WIDTH,
+                    'line-opacity': config.OUTLINE_OPACITY
                 }
             });
         }
@@ -357,14 +338,14 @@ export class MapComponent {
 
         // Dynamic grid spacing based on zoom
         const currentZoom = this.map!.getZoom();
-        const baseSpacing = 0.02; // at zoom 8
-        const baseZoom = 8;
+        const baseSpacing = config.GRID_BASE_SPACING;
+        const baseZoom = config.GRID_BASE_ZOOM;
         // Formula: spacing decreases as zoom increases (density increases)
-        let gridSpacingDeg = baseSpacing * Math.pow(2, baseZoom - currentZoom);
+        let gridSpacingDeg = baseSpacing * Math.pow(config.GRID_DENSITY_FACTOR, baseZoom - currentZoom);
 
         // Clamp spacing to avoid performance issues
-        gridSpacingDeg = Math.max(gridSpacingDeg, 0.0001); // Min spacing ~10m
-        gridSpacingDeg = Math.min(gridSpacingDeg, 0.01);   // Max spacing ~1km
+        gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
+        gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
 
         const mapBounds = this.map!.getBounds();
 
@@ -442,14 +423,7 @@ export class MapComponent {
     }
 
     private getDangerColor(level: string): string {
-        switch (level) {
-            case 'low': return '#CCFF66'; // 1 - Green
-            case 'moderate': return '#FFFF33'; // 2 - Yellow
-            case 'considerable': return '#FF9900'; // 3 - Orange
-            case 'high': return '#FF0000'; // 4 - Red
-            case 'very_high': return '#A60000'; // 5 - Dark Red
-            default: return '#888888';
-        }
+        return config.DANGER_COLORS[level] || config.DANGER_COLORS['default'];
     }
 
     getMap() {

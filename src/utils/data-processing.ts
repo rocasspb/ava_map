@@ -1,4 +1,5 @@
 import type { CaamlData, DangerRating } from '../types/avalanche';
+import { DEFAULT_MAX_ELEVATION, DANGER_LEVEL_VALUES } from '../config';
 
 export interface RegionDanger {
     regionID: string;
@@ -109,7 +110,7 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                         regionID: region.regionID,
                         dangerLevel: maxDanger.mainValue,
                         minElev: 0,
-                        maxElev: 9000,
+                        maxElev: DEFAULT_MAX_ELEVATION,
                         validAspects: undefined
                     });
                 });
@@ -122,7 +123,7 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
 
 function parseElevation(elevation: { lowerBound?: string; upperBound?: string } | undefined): { min: number, max: number } {
     let min = 0;
-    let max = 9000; // Default max elevation
+    let max = DEFAULT_MAX_ELEVATION; // Default max elevation
 
     if (!elevation) return { min, max };
 
@@ -133,7 +134,7 @@ function parseElevation(elevation: { lowerBound?: string; upperBound?: string } 
 
     if (elevation.upperBound) {
         max = parseInt(elevation.upperBound, 10);
-        if (isNaN(max)) max = 9000;
+        if (isNaN(max)) max = DEFAULT_MAX_ELEVATION;
     }
 
     // Handle cases where bounds might be textual or specific codes if necessary
@@ -146,13 +147,8 @@ function getMaxDanger(ratings: DangerRating[]): DangerRating | null {
     if (!ratings || ratings.length === 0) return null;
 
     // Map danger strings to numbers for comparison
-    const dangerLevels: Record<string, number> = {
-        'low': 1,
-        'moderate': 2,
-        'considerable': 3,
-        'high': 4,
-        'very_high': 5
-    };
+    // Map danger strings to numbers for comparison
+    const dangerLevels = DANGER_LEVEL_VALUES;
 
     let maxRating = ratings[0];
     let maxLevel = dangerLevels[maxRating.mainValue] || 0;
