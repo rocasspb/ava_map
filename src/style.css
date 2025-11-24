@@ -63,21 +63,44 @@
    box-sizing: border-box;
  }
 
- .aspect-grid {
-   display: grid;
-   grid-template-columns: repeat(4, 1fr);
-   gap: 5px;
- }
-
- .aspect-grid label {
+ /* Aspect Selector */
+ #aspect-circle-container {
    display: flex;
+   justify-content: center;
    align-items: center;
-   font-size: 11px;
-   cursor: pointer;
+   margin-top: 10px;
  }
 
- .aspect-grid input {
-   margin-right: 3px;
+ .aspect-selector svg {
+   display: block;
+ }
+
+ .aspect-sector {
+   fill: #eee;
+   stroke: #fff;
+   stroke-width: 2px;
+   cursor: pointer;
+   transition: fill 0.2s;
+ }
+
+ .aspect-sector:hover {
+   fill: #ddd;
+ }
+
+ .aspect-sector.selected {
+   fill: var(--primary-btn-color, #007bff);
+ }
+
+ .aspect-label {
+   font-size: 12px;
+   font-weight: bold;
+   fill: #333;
+   pointer-events: none;
+ }
+
+ .aspect-sector.selected+.aspect-label {
+   fill: #fff;
+   /* White text on selected sector */
  }
 
  #custom-controls.hidden {

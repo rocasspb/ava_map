@@ -2,6 +2,7 @@ import './style.css';
 import { MapComponent } from './components/Map';
 import { ApiService } from './services/api';
 import * as config from './config';
+import { AspectSelector } from './components/AspectSelector';
 
 const initApp = async () => {
   const mapComponent = new MapComponent('map');
@@ -64,28 +65,14 @@ const initApp = async () => {
       minSlopeInput.value = config.DEFAULT_CUSTOM_MIN_SLOPE.toString();
     }
 
-    const aspectContainer = document.querySelector('.aspect-grid');
+    let aspectSelector: AspectSelector | null = null;
+    const aspectContainer = document.getElementById('aspect-circle-container');
     if (aspectContainer) {
-      aspectContainer.innerHTML = '';
-      config.ASPECT_DIRECTIONS.forEach(dir => {
-        const label = document.createElement('label');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.name = 'aspect';
-        checkbox.value = dir;
-        checkbox.checked = true; // Default to checked
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(` ${dir}`));
-        aspectContainer.appendChild(label);
-      });
+      aspectSelector = new AspectSelector('aspect-circle-container');
     }
 
     const getSelectedAspects = () => {
-      const aspects: string[] = [];
-      document.querySelectorAll('input[name="aspect"]:checked').forEach((cb) => {
-        aspects.push((cb as HTMLInputElement).value);
-      });
-      return aspects;
+      return aspectSelector ? aspectSelector.getSelectedAspects() : [];
     };
 
     const modeRadios = document.querySelectorAll('input[name="mode"]');
