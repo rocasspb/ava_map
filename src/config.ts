@@ -26,7 +26,7 @@ export const GRID_BASE_SPACING = 0.02; // at base zoom
 export const GRID_BASE_ZOOM = 8;
 export const GRID_DENSITY_FACTOR = 2; // spacing decreases by this factor per zoom level diff
 export const GRID_MIN_SPACING = 0.0001; // ~10m
-export const GRID_MAX_SPACING = 0.01;   // ~1km
+export const GRID_MAX_SPACING = 0.05;
 
 // Steepness Mode
 export const STEEPNESS_THRESHOLDS = [
@@ -37,7 +37,7 @@ export const STEEPNESS_THRESHOLDS = [
 
 // Custom Mode
 export const CUSTOM_MODE_COLOR = '#0000FF';
-export const DEFAULT_CUSTOM_MIN_ELEV = 0;
+export const DEFAULT_CUSTOM_MIN_ELEV = 1500;
 export const DEFAULT_CUSTOM_MAX_ELEV = 9000;
 export const DEFAULT_CUSTOM_MIN_SLOPE = 0;
 
@@ -91,7 +91,8 @@ export const OUTLINE_OPACITY = 0.3;
 
 // Bounds
 // Approximate bounds for Euregio
-export const EUREGIO_BOUNDS = { minLng: 10.0, maxLng: 13.0, minLat: 45.5, maxLat: 47.5 };
+// TODO to be removed as the coverage extends to the whole world
+export const EUREGIO_BOUNDS = { minLng: -10.0, maxLng: 20.0, minLat: 35.0, maxLat: 60.0 };
 
 // Data Processing
 export const DEFAULT_MAX_ELEVATION = 9000;
@@ -104,14 +105,15 @@ export const METERS_PER_DEGREE = 111111;
 // API
 export const AVALANCHE_DATA_URL = 'https://static.avalanche.report/bulletins/latest/EUREGIO_de_CAAMLv6.json';
 export const REGION_GEOJSON_URLS = [
-    'https://regions.avalanches.org/micro-regions/AT-02_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/AT-03_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/AT-04_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/AT-05_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/AT-06_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/AT-07_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/AT-08_micro-regions.geojson.json', // Tyrol
-    'https://regions.avalanches.org/micro-regions/CH_micro-regions.geojson.json', // Switzerland
-    'https://regions.avalanches.org/micro-regions/IT-32-BZ_micro-regions.geojson.json', // South Tyrol
-    'https://regions.avalanches.org/micro-regions/IT-32-TN_micro-regions.geojson.json'  // Trentino
+    'https://regions.avalanches.org/micro-regions/AT-02_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/AT-03_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/AT-04_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/AT-05_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/AT-06_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/AT-07_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/AT-08_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/CH_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/FR_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/IT-32-BZ_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/IT-32-TN_micro-regions.geojson.json'
 ];

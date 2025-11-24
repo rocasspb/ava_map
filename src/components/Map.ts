@@ -217,8 +217,8 @@ export class MapComponent {
         // We order them so that higher steepness (Red) is drawn last (on top)
         const orderedRules: GenerationRule[] = config.STEEPNESS_THRESHOLDS.map(t => ({
             bounds: bounds,
-            minElev: config.DEFAULT_CUSTOM_MIN_ELEV,
-            maxElev: config.DEFAULT_CUSTOM_MAX_ELEV,
+            minElev: 0,
+            maxElev: 9000,
             minSlope: t.minSlope,
             color: t.color,
             properties: { steepness: t.label }
