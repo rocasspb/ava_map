@@ -1,9 +1,9 @@
 import * as maptiler from '@maptiler/sdk';
 
 // Map Defaults
-export const DEFAULT_CENTER: [number, number] = [11.3, 46.5];
+export const DEFAULT_CENTER: [number, number] = [11.6, 47.2];
 export const DEFAULT_ZOOM = 8;
-export const MAP_STYLE = maptiler.MapStyle.OUTDOOR;
+export const MAP_STYLE = maptiler.MapStyle.WINTER;
 export const TERRAIN_SOURCE_URL_PREFIX = 'https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=';
 export const TERRAIN_EXAGGERATION = 1;
 
