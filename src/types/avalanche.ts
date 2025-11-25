@@ -8,9 +8,9 @@ export interface Bulletin {
     startTime: string;
     endTime: string;
   };
-  avalancheActivity: {
-    highlights: string;
-    comment: string;
+  avalancheActivity?: {
+    highlights?: string;
+    comment?: string;
   };
   snowpackStructure: {
     comment: string;

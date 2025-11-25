@@ -60,7 +60,13 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
     const bands: ElevationBand[] = [];
 
     data.bulletins.forEach(bulletin => {
-        const bulletinText = bulletin.avalancheActivity.highlights || bulletin.avalancheActivity.comment || "";
+        let bulletinText = "";
+        if (bulletin.avalancheActivity) {
+            const parts = [];
+            if (bulletin.avalancheActivity.highlights) parts.push(bulletin.avalancheActivity.highlights);
+            if (bulletin.avalancheActivity.comment) parts.push(bulletin.avalancheActivity.comment);
+            bulletinText = parts.join('\n\n');
+        }
 
         // If there are specific avalanche problems, they often define the elevation
         if (bulletin.avalancheProblems && bulletin.avalancheProblems.length > 0) {

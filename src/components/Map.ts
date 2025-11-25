@@ -319,7 +319,7 @@ export class MapComponent {
             const bulletinText = feature.properties['bulletinText'];
             const avalancheProblemsProp = feature.properties['avalancheProblems'];
 
-            let html = `<div style="font-family: sans-serif; max-width: 300px;">`;
+            let html = `<div style="font-family: sans-serif; width: 400px; max-height: 400px; overflow-y: auto; padding-right: 5px;">`;
 
             if (regionId) {
                 html += `<h3 style="margin: 0 0 8px 0;">Region: ${regionId}</h3>`;
@@ -331,11 +331,7 @@ export class MapComponent {
                         ${aspect ? `Aspect: ${aspect}` : ''}
                      </div>`;
 
-            if (bulletinText) {
-                html += `<div style="margin-bottom: 8px; font-style: italic; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 8px;">
-                            ${bulletinText}
-                         </div>`;
-            }
+
 
             if (avalancheProblemsProp) {
                 try {
@@ -356,9 +352,15 @@ export class MapComponent {
                 }
             }
 
+            if (bulletinText) {
+                html += `<div style="margin-bottom: 8px; font-style: italic; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 8px; white-space: pre-wrap;">
+                            ${bulletinText}
+                         </div>`;
+            }
+
             html += `</div>`;
 
-            new maptiler.Popup()
+            new maptiler.Popup({ maxWidth: '450px' })
                 .setLngLat(e.lngLat)
                 .setHTML(html)
                 .addTo(this.map!);
