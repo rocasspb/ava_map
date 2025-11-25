@@ -6,7 +6,7 @@ A tool to assess avalanche terrain, based on the slope parameters and regional a
 
 ## Features
 
-- **Avalanche Risk Visualization**: Fetches and displays real-time avalanche danger levels from official bulletins.
+- **Avalanche Risk Visualization**: Fetches and displays real-time avalanche danger levels from official bulletins. The data factors avalanche danger, based not only on the region, but also on the aspect and elevation.
 - **Steepness Mode**: Color-coded visualization of terrain steepness to identify potential avalanche terrain (>30°, >35°, >40°).
 - **Custom Analysis Mode**: Interactive tools to filter terrain based on:
   - Elevation range (min/max)

@@ -17,15 +17,15 @@ export type VisualizationMode = typeof MODES[keyof typeof MODES];
 
 export const MODE_LABELS: Record<VisualizationMode, string> = {
     [MODES.AVALANCHE]: 'Avalanche Risk',
-    [MODES.CUSTOM]: 'Custom Overlay',
-    [MODES.STEEPNESS]: 'Steepness'
+    [MODES.STEEPNESS]: 'Steepness',
+    [MODES.CUSTOM]: 'Custom',
 };
 
 // Grid Generation
 export const GRID_BASE_SPACING = 0.01; // at base zoom
 export const GRID_BASE_ZOOM = 8;
 export const GRID_DENSITY_FACTOR = 1.8; // spacing decreases by this factor per zoom level diff
-export const GRID_MIN_SPACING = 0.0001; // ~10m
+export const GRID_MIN_SPACING = 0.0002; // ~20m
 export const GRID_MAX_SPACING = 0.05;
 
 // Steepness Mode
