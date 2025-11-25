@@ -22,9 +22,9 @@ export const MODE_LABELS: Record<VisualizationMode, string> = {
 };
 
 // Grid Generation
-export const GRID_BASE_SPACING = 0.02; // at base zoom
+export const GRID_BASE_SPACING = 0.01; // at base zoom
 export const GRID_BASE_ZOOM = 8;
-export const GRID_DENSITY_FACTOR = 2; // spacing decreases by this factor per zoom level diff
+export const GRID_DENSITY_FACTOR = 1.8; // spacing decreases by this factor per zoom level diff
 export const GRID_MIN_SPACING = 0.0001; // ~10m
 export const GRID_MAX_SPACING = 0.05;
 
