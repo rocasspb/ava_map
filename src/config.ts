@@ -103,7 +103,10 @@ export const SLOPE_CALCULATION_OFFSET = 0.0001;
 export const METERS_PER_DEGREE = 111111;
 
 // API
-export const AVALANCHE_DATA_URL = 'https://static.avalanche.report/bulletins/latest/EUREGIO_de_CAAMLv6.json';
+export const AVALANCHE_DATA_URLS = [
+    'https://static.avalanche.report/bulletins/latest/EUREGIO_en_CAAMLv6.json',
+    'https://aws.slf.ch/api/bulletin/caaml/en/json'
+];
 export const REGION_GEOJSON_URLS = [
     'https://regions.avalanches.org/micro-regions/AT-02_micro-regions.geojson.json',
     'https://regions.avalanches.org/micro-regions/AT-03_micro-regions.geojson.json',
