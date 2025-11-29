@@ -1,4 +1,4 @@
-import type { CaamlData, DangerRating } from '../types/avalanche';
+import type { CaamlData, DangerRating, AvalancheProblem } from '../types/avalanche';
 import { DEFAULT_MAX_ELEVATION, DANGER_LEVEL_VALUES } from '../config';
 
 export interface RegionDanger {
@@ -12,6 +12,8 @@ export interface ElevationBand {
     minElev: number;
     maxElev: number;
     validAspects?: string[];
+    avalancheProblems: AvalancheProblem[];
+    bulletinText: string;
 }
 
 export function processAvalancheData(data: CaamlData): Map<string, DangerRating> {
@@ -58,6 +60,14 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
     const bands: ElevationBand[] = [];
 
     data.bulletins.forEach(bulletin => {
+        let bulletinText = "";
+        if (bulletin.avalancheActivity) {
+            const parts = [];
+            if (bulletin.avalancheActivity.highlights) parts.push(bulletin.avalancheActivity.highlights);
+            if (bulletin.avalancheActivity.comment) parts.push(bulletin.avalancheActivity.comment);
+            bulletinText = parts.join('\n\n');
+        }
+
         // If there are specific avalanche problems, they often define the elevation
         if (bulletin.avalancheProblems && bulletin.avalancheProblems.length > 0) {
             bulletin.regions.forEach(region => {
@@ -97,7 +107,9 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                         dangerLevel: rating.mainValue,
                         minElev: rMin,
                         maxElev: rMax,
-                        validAspects: aspects
+                        validAspects: aspects,
+                        avalancheProblems: matchingProblems,
+                        bulletinText: bulletinText
                     });
                 });
             });
@@ -111,7 +123,9 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                         dangerLevel: maxDanger.mainValue,
                         minElev: 0,
                         maxElev: DEFAULT_MAX_ELEVATION,
-                        validAspects: undefined
+                        validAspects: undefined,
+                        avalancheProblems: [],
+                        bulletinText: bulletinText
                     });
                 });
             }

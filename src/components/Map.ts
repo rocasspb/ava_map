@@ -15,7 +15,13 @@ interface GenerationRule {
     minSlope?: number;
     validAspects?: string[];
     color: string;
-    properties: any;
+    properties: {
+        regionId?: string;
+        dangerLevel?: string;
+        steepness?: string;
+        avalancheProblems?: any[];
+        bulletinText?: string;
+    };
 }
 
 export class MapComponent {
@@ -152,7 +158,9 @@ export class MapComponent {
                 color: color,
                 properties: {
                     regionId: band.regionID,
-                    dangerLevel: band.dangerLevel
+                    dangerLevel: band.dangerLevel,
+                    avalancheProblems: band.avalancheProblems,
+                    bulletinText: band.bulletinText
                 }
             });
         }
@@ -308,17 +316,51 @@ export class MapComponent {
             const danger = feature.properties['dangerLevel'];
             const elevation = feature.properties['elevation'];
             const aspect = feature.properties['aspect'];
+            const bulletinText = feature.properties['bulletinText'];
+            const avalancheProblemsProp = feature.properties['avalancheProblems'];
 
-            let html = `<p>Elevation: ${Math.round(elevation)}m</p>`;
-            if (aspect) {
-                html += `<p>Aspect: ${aspect}</p>`;
-            }
+            let html = `<div style="font-family: sans-serif; width: 400px; max-height: 400px; overflow-y: auto; padding-right: 5px;">`;
+
             if (regionId) {
-                html = `<h3>Region: ${regionId}</h3>
-                        <p>Danger Level: ${danger}</p>` + html;
+                html += `<h3 style="margin: 0 0 8px 0;">Region: ${regionId}</h3>`;
+                html += `<div style="margin-bottom: 8px;"><strong>Danger Level: ${danger}</strong></div>`;
             }
 
-            new maptiler.Popup()
+            html += `<div style="margin-bottom: 8px; font-size: 0.9em;">
+                        Elevation: ${Math.round(elevation)}m<br>
+                        ${aspect ? `Aspect: ${aspect}` : ''}
+                     </div>`;
+
+
+
+            if (avalancheProblemsProp) {
+                try {
+                    let problems = avalancheProblemsProp;
+                    if (typeof problems === 'string') {
+                        problems = JSON.parse(problems);
+                    }
+
+                    if (Array.isArray(problems) && problems.length > 0) {
+                        html += `<div style="margin-top: 8px;"><strong>Avalanche Problems:</strong><ul style="padding-left: 20px; margin: 4px 0;">`;
+                        problems.forEach((p: any) => {
+                            html += `<li>${p.problemType} (${p.frequency}, ${p.snowpackStability})</li>`;
+                        });
+                        html += `</ul></div>`;
+                    }
+                } catch (e) {
+                    console.error("Error parsing avalanche problems", e);
+                }
+            }
+
+            if (bulletinText) {
+                html += `<div style="margin-bottom: 8px; font-style: italic; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 8px; white-space: pre-wrap;">
+                            ${bulletinText}
+                         </div>`;
+            }
+
+            html += `</div>`;
+
+            new maptiler.Popup({ maxWidth: '450px' })
                 .setLngLat(e.lngLat)
                 .setHTML(html)
                 .addTo(this.map!);
