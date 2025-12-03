@@ -329,7 +329,7 @@ export class MapComponent {
             html += `<div style="margin-bottom: 8px; font-size: 0.9em;">
                         Elevation: ${Math.round(elevation)}m<br>
                         ${aspect ? `Aspect: ${aspect}` : ''}
-                     </div>`;
+                     <div>`;
 
 
 
