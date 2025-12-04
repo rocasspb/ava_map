@@ -6,7 +6,7 @@ import * as config from '../config';
 
 import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
 import { calculateAspect, calculateSlope } from '../utils/geo-utils';
-import { getDangerIcon, getProblemIcon, getProblemLabel } from '../utils/icons';
+import { MapPopup } from './MapPopup';
 
 interface GenerationRule {
     bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number };
@@ -32,6 +32,7 @@ export class MapComponent {
     private resolveMapLoaded!: () => void;
     private lastAvalancheData: CaamlData | null = null;
     private lastRegionsGeoJSON: any | null = null;
+    private popup: MapPopup;
 
     // State for dynamic updates
     private currentMode: config.VisualizationMode = config.MODES.AVALANCHE;
@@ -47,6 +48,7 @@ export class MapComponent {
         this.mapLoaded = new Promise((resolve) => {
             this.resolveMapLoaded = resolve;
         });
+        this.popup = new MapPopup();
     }
 
     initMap() {
@@ -313,111 +315,7 @@ export class MapComponent {
     private handlePointClick = (e: any) => {
         if (e.features && e.features.length > 0) {
             const feature = e.features[0];
-            const regionId = feature.properties['regionId'];
-            const danger = feature.properties['dangerLevel'];
-            const elevation = feature.properties['elevation'];
-            const aspect = feature.properties['aspect'];
-            const bulletinText = feature.properties['bulletinText'];
-            const avalancheProblemsProp = feature.properties['avalancheProblems'];
-
-            let html = `<div style="font-family: sans-serif; width: 400px; max-height: 400px; overflow-y: auto; padding-right: 5px;">`;
-
-            if (regionId) {
-                html += `<h3 style="margin: 0 0 4px 0;">Region: ${regionId}</h3>`;
-
-                const dangerIcon = getDangerIcon(danger);
-                html += `<div style="display: flex; align-items: center; margin-bottom: 4px;">`;
-                if (dangerIcon) {
-                    html += `<img src="${dangerIcon}" alt="${danger}" style="height: 40px; margin-right: 10px;">`;
-                }
-                html += `<strong>Danger Level: ${danger}</strong></div>`;
-            }
-
-            html += `<div style="margin-bottom: 4px; font-size: 0.9em;">
-                        Elevation: ${Math.round(elevation)}m<br>
-                        ${aspect ? `Aspect: ${aspect}` : ''}
-                     <div>`;
-
-
-
-            if (avalancheProblemsProp) {
-                try {
-                    let problems = avalancheProblemsProp;
-                    if (typeof problems === 'string') {
-                        problems = JSON.parse(problems);
-                    }
-
-                    if (Array.isArray(problems) && problems.length > 0) {
-                        html += `<div style="margin-top: 4px;"><strong>Avalanche Problems:</strong><ul style="padding-left: 20px; margin: 2px 0; list-style-type: none;">`;
-                        problems.forEach((p: any) => {
-                            const problemIcon = getProblemIcon(p.problemType);
-                            const problemLabel = getProblemLabel(p.problemType);
-
-                            html += `<li style="display: flex; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">`;
-
-                            if (problemIcon) {
-                                html += `<div style="flex-shrink: 0; margin-right: 12px;">`;
-                                html += `<img src="${problemIcon}" alt="${problemLabel}" style="height: 50px; width: auto;">`;
-                                html += `</div>`;
-                            }
-
-                            html += `<div style="flex-grow: 1;">`;
-                            html += `<div><strong>${problemLabel}</strong></div>`;
-
-                            html += `<div style="font-size: 0.85em; color: #333; line-height: 1.2;">`;
-
-                            // Elevation
-                            if (p.elevation) {
-                                let elevText = '';
-                                if (p.elevation.lowerBound && p.elevation.upperBound) {
-                                    elevText = `${p.elevation.lowerBound}m - ${p.elevation.upperBound}m`;
-                                } else if (p.elevation.lowerBound) {
-                                    elevText = `> ${p.elevation.lowerBound}m`;
-                                } else if (p.elevation.upperBound) {
-                                    elevText = `< ${p.elevation.upperBound}m`;
-                                }
-
-                                if (elevText) {
-                                    html += `<div>Elevation: ${elevText}</div>`;
-                                }
-                            }
-
-                            // Aspects
-                            if (p.aspects && p.aspects.length > 0) {
-                                html += `<div>Aspects: ${p.aspects.join(', ')}</div>`;
-                            }
-
-                            // Frequency
-                            if (p.frequency) {
-                                html += `<div>Frequency: ${p.frequency}</div>`;
-                            }
-
-                            // Size
-                            if (p.avalancheSize) {
-                                html += `<div>Size: ${p.avalancheSize}</div>`;
-                            }
-
-                            html += `</div></div></li>`;
-                        });
-                        html += `</ul></div>`;
-                    }
-                } catch (e) {
-                    console.error("Error parsing avalanche problems", e);
-                }
-            }
-
-            if (bulletinText) {
-                html += `<div style="margin-bottom: 4px; font-style: italic; font-size: 0.9em; border-left: 3px solid #ccc; padding-left: 8px;">
-                            ${bulletinText}
-                         </div>`;
-            }
-
-            html += `</div>`;
-
-            new maptiler.Popup({ maxWidth: '450px' })
-                .setLngLat(e.lngLat)
-                .setHTML(html)
-                .addTo(this.map!);
+            this.popup.show(this.map!, e.lngLat, feature.properties);
         }
     }
 
