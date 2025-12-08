@@ -103,20 +103,10 @@ export const SLOPE_CALCULATION_OFFSET = 0.0001;
 export const METERS_PER_DEGREE = 111111;
 
 // API
-export const AVALANCHE_DATA_URLS = [
-    'https://static.avalanche.report/bulletins/latest/EUREGIO_en_CAAMLv6.json',
-    'https://aws.slf.ch/api/bulletin/caaml/en/json'
-];
-export const REGION_GEOJSON_URLS = [
-    'https://regions.avalanches.org/micro-regions/AT-02_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/AT-03_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/AT-04_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/AT-05_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/AT-06_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/AT-07_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/AT-08_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/CH_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/FR_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/IT-32-BZ_micro-regions.geojson.json',
-    'https://regions.avalanches.org/micro-regions/IT-32-TN_micro-regions.geojson.json'
-];
+// API
+export const API_BASE_URL = 'http://localhost:3000/api';
+
+// Deprecated: Moved to backend
+// export const AVALANCHE_DATA_URLS = [ ... ];
+// export const REGION_GEOJSON_URLS = [ ... ];
+
