@@ -103,8 +103,7 @@ export const SLOPE_CALCULATION_OFFSET = 0.0001;
 export const METERS_PER_DEGREE = 111111;
 
 // API
-// API
-export const API_BASE_URL = 'http://localhost:3000/api';
+export const API_BASE_URL = import.meta.env.DEV ? 'http://localhost:3000/api' : '/api';
 
 // Deprecated: Moved to backend
 // export const AVALANCHE_DATA_URLS = [ ... ];
