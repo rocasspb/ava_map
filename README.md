@@ -1,4 +1,4 @@
-# AvaAwareness
+# [AvaAwa.eu](https://avaawa.eu/)
 A tool to assess avalanche terrain, based on the slope parameters and regional avalanche forecast. Key advanage to the tools existing on the market is the highlight of the avalanche danger not only based on the region, but also considering the aspect and elevation relevant to the avalanche problems, specified in the bulletin. The information on the specific problems is avaiiable at a glance, looking at a particular route you are planning.
 
 ![Avalanche danger](src/docs/img/bulletins.png)
@@ -16,6 +16,7 @@ A tool to assess avalanche terrain, based on the slope parameters and regional a
 ## Tech Stack
 
 - **Framework**: [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Backend**: [Node.js](https://nodejs.org/) + [Express](https://expressjs.com/)
 - **Map Engine**: [MapTiler SDK](https://docs.maptiler.com/sdk-js/)
 - **Data Fetching**: Axios
 - **Data Sources**: 
@@ -41,14 +42,15 @@ A tool to assess avalanche terrain, based on the slope parameters and regional a
 
 ### Running the App
 
-Start the development server:
+Start the development environment (Backend API + Frontend):
 ```bash
 npm run dev
 ```
 
-Build for production:
+Build and run for production:
 ```bash
 npm run build
+npm run server
 ```
 
 ## Configuration
