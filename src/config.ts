@@ -24,7 +24,7 @@ export const MODE_LABELS: Record<VisualizationMode, string> = {
 // Grid Generation
 export const GRID_BASE_SPACING = 0.01; // at base zoom
 export const GRID_BASE_ZOOM = 8;
-export const GRID_DENSITY_FACTOR = 1.8; // spacing decreases by this factor per zoom level diff
+export const GRID_DENSITY_FACTOR = 1.7; // spacing decreases by this factor per zoom level diff
 export const GRID_MIN_SPACING = 0.0002; // ~20m
 export const GRID_MAX_SPACING = 0.05;
 
@@ -47,6 +47,13 @@ export const SLOPE_OPTIONS = [
     { value: 30, label: 'Steep (> 30°)' },
     { value: 35, label: 'Very Steep (> 35°)' },
     { value: 40, label: 'Extreme (> 40°)' }
+];
+
+export const SLOPE_SLIDER_STEPS = [
+    { value: 0, label: 'Mod.', subLabel: '<30°', color: '#2ECC71' }, // Green
+    { value: 30, label: 'Steep', subLabel: '≥30°', color: '#F1C40F' }, // Yellow
+    { value: 35, label: 'Very', subLabel: '≥35°', color: '#E67E22' }, // Orange
+    { value: 40, label: 'Extr.', subLabel: '≥40°', color: '#E74C3C' }  // Red
 ];
 
 export const ASPECT_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -86,7 +93,7 @@ export const POINT_RADIUS_STOPS = [
 ];
 
 export const OUTLINE_COLOR = '#000000';
-export const OUTLINE_WIDTH = 1;
+export const OUTLINE_WIDTH = 0;
 export const OUTLINE_OPACITY = 0.3;
 
 // Bounds

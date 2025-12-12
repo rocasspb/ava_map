@@ -3,6 +3,8 @@ import { MapComponent } from './components/Map';
 import { ApiService } from './services/api';
 import * as config from './config';
 import { AspectSelector } from './components/AspectSelector';
+import { SteepnessSlider } from './components/SteepnessSlider';
+import { ElevationSlider } from './components/ElevationSlider';
 
 const initApp = async () => {
   const mapComponent = new MapComponent('map');
@@ -45,25 +47,11 @@ const initApp = async () => {
     }
 
     const customControls = document.getElementById('custom-controls');
-    const applyBtn = document.getElementById('apply-custom');
-    const minInput = document.getElementById('min-elev') as HTMLInputElement;
-    const maxInput = document.getElementById('max-elev') as HTMLInputElement;
-    const minSlopeInput = document.getElementById('min-slope') as HTMLSelectElement;
 
-    // Initialize inputs with defaults from config
-    if (minInput) minInput.value = config.DEFAULT_CUSTOM_MIN_ELEV.toString();
-    if (maxInput) maxInput.value = config.DEFAULT_CUSTOM_MAX_ELEV.toString();
+    // Initialize Elevation Slider
+    const elevationSlider = new ElevationSlider('elevation-slider', 0, 4000); // 0-4000m range
 
-    if (minSlopeInput) {
-      minSlopeInput.innerHTML = '';
-      config.SLOPE_OPTIONS.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value.toString();
-        option.textContent = opt.label;
-        minSlopeInput.appendChild(option);
-      });
-      minSlopeInput.value = config.DEFAULT_CUSTOM_MIN_SLOPE.toString();
-    }
+    const steepnessSlider = new SteepnessSlider('steepness-slider', config.DEFAULT_CUSTOM_MIN_SLOPE);
 
     let aspectSelector: AspectSelector | null = null;
     const aspectContainer = document.getElementById('aspect-circle-container');
@@ -75,6 +63,21 @@ const initApp = async () => {
       return aspectSelector ? aspectSelector.getSelectedAspects() : [];
     };
 
+    const updateCustomMode = () => {
+      const { min, max } = elevationSlider.getValues();
+      const aspects = getSelectedAspects();
+      const minSlope = steepnessSlider.getValue();
+
+      mapComponent.setCustomMode(true, min, max, aspects, minSlope);
+    };
+
+    elevationSlider.setOnChange(() => updateCustomMode());
+    steepnessSlider.setOnChange(() => updateCustomMode());
+
+    if (aspectSelector) {
+      aspectSelector.setOnChange(() => updateCustomMode());
+    }
+
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     modeRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
@@ -83,12 +86,7 @@ const initApp = async () => {
         if (mode === config.MODES.CUSTOM) {
           customControls?.classList.remove('hidden');
           // Trigger custom mode update with current values
-          const min = Number((document.getElementById('min-elev') as HTMLInputElement).value);
-          const max = Number((document.getElementById('max-elev') as HTMLInputElement).value);
-          const aspects = getSelectedAspects();
-          const minSlope = Number((document.getElementById('min-slope') as HTMLSelectElement).value);
-
-          mapComponent.setCustomMode(true, min, max, aspects, minSlope);
+          updateCustomMode();
         } else if (mode === config.MODES.STEEPNESS) {
           customControls?.classList.add('hidden');
           mapComponent.setSteepnessMode(true);
@@ -99,13 +97,7 @@ const initApp = async () => {
       });
     });
 
-    applyBtn?.addEventListener('click', () => {
-      const min = parseInt(minInput.value);
-      const max = parseInt(maxInput.value);
-      const minSlope = parseInt(minSlopeInput.value);
-      const aspects = getSelectedAspects();
-      mapComponent.setCustomMode(true, min, max, aspects, minSlope);
-    });
+    // applyBtn listener removed
 
   } catch (error) {
     console.error('Failed to initialize app:', error);

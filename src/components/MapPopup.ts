@@ -5,7 +5,10 @@ export class MapPopup {
     private popup: maptiler.Popup;
 
     constructor() {
-        this.popup = new maptiler.Popup({ maxWidth: '450px' });
+        this.popup = new maptiler.Popup({
+            className: 'avalanche-popup',
+            maxWidth: 'none'
+        });
     }
 
     show(map: maptiler.Map, lngLat: maptiler.LngLatLike, properties: any) {
@@ -24,7 +27,7 @@ export class MapPopup {
         const bulletinText = properties['bulletinText'];
         const avalancheProblemsProp = properties['avalancheProblems'];
 
-        let html = `<div style="font-family: sans-serif; width: 400px; max-height: 400px; overflow-y: auto; padding-right: 5px;">`;
+        let html = `<div style="font-family: sans-serif; max-height: 400px; overflow-y: auto; padding-right: 5px;">`;
 
         if (regionId) {
             html += `<h3 style="margin: 0 0 4px 0;">Region: ${regionId}</h3>`;

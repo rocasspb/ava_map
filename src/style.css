@@ -63,11 +63,38 @@
    box-sizing: border-box;
  }
 
+ .popup-title {
+   font-size: 16px;
+   font-weight: bold;
+   color: #2c3e50;
+ }
+
  /* Aspect Selector */
- #aspect-circle-container {
+ .aspect-selector-container {
+   width: 100%;
+   margin-bottom: 20px;
+   font-family: sans-serif;
+ }
+
+ .aspect-header {
    display: flex;
-   justify-content: center;
+   justify-content: space-between;
    align-items: center;
+   margin-bottom: 20px;
+ }
+
+ .aspect-values {
+   background-color: #e8f5e9;
+   color: #009668;
+   padding: 4px 8px;
+   border-radius: 4px;
+   font-weight: bold;
+   font-family: monospace;
+   font-size: 14px;
+ }
+
+ #aspect-circle-container {
+   display: block;
    margin-top: 10px;
  }
 
@@ -88,7 +115,8 @@
  }
 
  .aspect-sector.selected {
-   fill: var(--primary-btn-color, #007bff);
+   fill: #009688;
+   /* Teal to match Elevation Slider */
  }
 
  .aspect-label {
@@ -120,4 +148,251 @@
 
  button:hover {
    background: var(--primary-btn-hover-color, #0056b3);
+ }
+
+ /* Popup Styling */
+ .avalanche-popup {
+   z-index: 2000;
+ }
+
+ .avalanche-popup .maplibregl-popup-content {
+   padding: 15px;
+   border-radius: 8px;
+   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+   max-width: 400px;
+   /* Desktop max-width */
+   width: max-content;
+ }
+
+ /* Mobile override: Centered Modal */
+ @media (max-width: 600px) {
+   .avalanche-popup {
+     transform: translate(-50%, -50%) !important;
+     position: fixed !important;
+     top: 50% !important;
+     left: 50% !important;
+     margin: 0 !important;
+     max-width: 90vw !important;
+     width: 90vw !important;
+   }
+
+   .avalanche-popup .maplibregl-popup-content {
+     max-width: 100% !important;
+     width: 100% !important;
+     max-height: 80vh;
+     overflow-y: auto;
+   }
+
+   .avalanche-popup .maplibregl-popup-tip {
+     display: none;
+   }
+ }
+
+ /* Slider Container */
+ .steepness-slider-container {
+   width: 100%;
+   padding: 10px 0;
+   box-sizing: border-box;
+   position: relative;
+   /* height: 80px; removed to allow content to flow */
+   /* Space for labels below */
+   user-select: none;
+ }
+
+ /* Track Container */
+ .slider-track-container {
+   position: relative;
+   width: 90%;
+   /* Leave space for thumb at ends */
+   margin: 0 auto;
+   height: 12px;
+   cursor: pointer;
+   top: 10px;
+ }
+
+ /* Track Background */
+ .slider-track-bg {
+   position: absolute;
+   width: 100%;
+   height: 100%;
+   background: #f0f0f0;
+   border-radius: 6px;
+   top: 0;
+   left: 0;
+ }
+
+ /* Track Fill */
+ .slider-track-fill {
+   position: absolute;
+   height: 100%;
+   background: #ff9900;
+   /* Default, overridden by JS */
+   border-radius: 6px;
+   top: 0;
+   left: 0;
+   transition: width 0.1s ease, background-color 0.2s;
+ }
+
+ /* Steps (Dots) */
+ .slider-step-dot {
+   position: absolute;
+   width: 16px;
+   height: 16px;
+   background: white;
+   /* Default empty state */
+   border: 2px solid #fff;
+   border-radius: 50%;
+   top: 50%;
+   transform: translate(-50%, -50%);
+   z-index: 2;
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+ }
+
+ /* Thumb */
+ .slider-thumb {
+   position: absolute;
+   width: 24px;
+   height: 24px;
+   background: white;
+   border: 4px solid #ff9900;
+   /* Default */
+   border-radius: 50%;
+   top: 50%;
+   transform: translate(-50%, -50%);
+   /* Center on position */
+   z-index: 3;
+   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+   cursor: grab;
+   transition: left 0.1s ease, border-color 0.2s;
+ }
+
+ .slider-thumb:active {
+   cursor: grabbing;
+   transform: translate(-50%, -50%) scale(1.1);
+ }
+
+ /* Labels */
+ .slider-labels {
+   position: relative;
+   width: 90%;
+   margin: 30px auto 0;
+   /* Push below track */
+   height: 40px;
+ }
+
+ .slider-label-group {
+   position: absolute;
+   transform: translateX(-50%);
+   text-align: center;
+   cursor: pointer;
+   width: 60px;
+   /* Ensure click area */
+ }
+
+ .slider-label-main {
+   font-size: 14px;
+   font-weight: 500;
+   color: #888;
+   margin-bottom: 2px;
+   transition: color 0.2s;
+ }
+
+ .slider-label-sub {
+   font-size: 11px;
+   color: #bbb;
+ }
+
+
+ /* Elevation Slider */
+ .elevation-slider-container {
+   width: 100%;
+   margin-bottom: 20px;
+   font-family: sans-serif;
+ }
+
+ .elevation-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 20px;
+ }
+
+ .elevation-values {
+   background-color: #e8f5e9;
+   color: #009668;
+   /* Greenish */
+   padding: 4px 8px;
+   border-radius: 4px;
+   font-weight: bold;
+   font-family: monospace;
+   font-size: 14px;
+ }
+
+ .elevation-slider-wrapper {
+   position: relative;
+   height: 50px;
+   padding: 0 10px;
+   /* Space for thumbs at ends */
+ }
+
+ /* Track */
+ .elevation-track-container {
+   position: relative;
+   width: 100%;
+   height: 8px;
+   top: 10px;
+ }
+
+ .elevation-track-bg {
+   position: absolute;
+   width: 100%;
+   height: 100%;
+   background: #e0e0e0;
+   border-radius: 4px;
+ }
+
+ .elevation-track-fill {
+   position: absolute;
+   height: 100%;
+   background: #009688;
+   /* Teal/Green */
+   border-radius: 4px;
+   z-index: 1;
+   /* Below thumbs */
+ }
+
+ /* Thumbs */
+ .elevation-thumb {
+   position: absolute;
+   width: 20px;
+   height: 20px;
+   background: #009688;
+   border: 3px solid white;
+   border-radius: 50%;
+   top: 50%;
+   transform: translate(-50%, -50%);
+   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+   z-index: 2;
+   cursor: grab;
+ }
+
+ .elevation-thumb:active {
+   cursor: grabbing;
+   transform: translate(-50%, -50%) scale(1.1);
+ }
+
+ /* Labels */
+ .elevation-labels {
+   position: relative;
+   margin-top: 25px;
+   /* Push below track */
+   width: 100%;
+   height: 20px;
+ }
+
+ .elevation-label {
+   position: absolute;
+   transform: translateX(-50%);
+   font-size: 12px;
+   color: #7f8c8d;
  }

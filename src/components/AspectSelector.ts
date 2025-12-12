@@ -4,12 +4,18 @@ export class AspectSelector {
     private container: HTMLElement;
     private selectedAspects: Set<string>;
 
+    private onChange: ((selected: string[]) => void) | null = null;
+
     constructor(containerId: string, initialAspects: string[] = []) {
         const el = document.getElementById(containerId);
         if (!el) throw new Error(`Container with id ${containerId} not found`);
         this.container = el;
         this.selectedAspects = new Set(initialAspects.length > 0 ? initialAspects : config.ASPECT_DIRECTIONS);
         this.render();
+    }
+
+    public setOnChange(callback: (selected: string[]) => void) {
+        this.onChange = callback;
     }
 
     public getSelectedAspects(): string[] {
@@ -23,6 +29,9 @@ export class AspectSelector {
             this.selectedAspects.add(aspect);
         }
         this.updateVisuals();
+        if (this.onChange) {
+            this.onChange(this.getSelectedAspects());
+        }
     }
 
     private updateVisuals() {
@@ -35,11 +44,30 @@ export class AspectSelector {
                 sector.classList.remove('selected');
             }
         });
+
+        const display = this.container.querySelector('#aspect-display');
+        if (display) {
+            const count = this.selectedAspects.size;
+            if (count === 0) display.textContent = 'None';
+            else if (count === config.ASPECT_DIRECTIONS.length) display.textContent = 'All';
+            else display.textContent = this.getSelectedAspects().join(', ');
+        }
     }
 
     private render() {
         this.container.innerHTML = '';
-        this.container.classList.add('aspect-selector');
+        this.container.classList.add('aspect-selector-container'); // Renamed class for container
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'aspect-header'; // Matches elevation-header style
+        header.innerHTML = `
+            <span class="popup-title">Aspects</span>
+            <div class="aspect-values">
+                <span id="aspect-display">All</span>
+            </div>
+        `;
+        this.container.appendChild(header);
 
         const svgNS = "http://www.w3.org/2000/svg";
         const size = 200;
@@ -47,12 +75,15 @@ export class AspectSelector {
         const radius = 90;
         const innerRadius = 30; // Hole in the middle for labels or just style
 
+        const svgWrapper = document.createElement('div');
+        svgWrapper.style.display = 'flex';
+        svgWrapper.style.justifyContent = 'center';
+
         const svg = document.createElementNS(svgNS, "svg");
-        svg.setAttribute("width", "100%");
-        svg.setAttribute("height", "100%");
+        svg.setAttribute("width", "200"); // Fixed width for consistent look
+        svg.setAttribute("height", "200");
         svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-        svg.style.maxWidth = `${size}px`;
-        svg.style.maxHeight = `${size}px`;
+        // Remove max-width/height styles that might shrink it too much
 
         const sectors = config.ASPECT_DIRECTIONS;
         const anglePerSector = 360 / sectors.length;
@@ -123,6 +154,8 @@ export class AspectSelector {
             svg.appendChild(text);
         });
 
-        this.container.appendChild(svg);
+        svgWrapper.appendChild(svg);
+        this.container.appendChild(svgWrapper);
+        this.updateVisuals(); // Ensure text is correct initially
     }
 }
