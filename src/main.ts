@@ -47,11 +47,17 @@ const initApp = async () => {
     }
 
     const customControls = document.getElementById('custom-controls');
+    const avalancheControls = document.getElementById('avalanche-controls');
 
     // Initialize Elevation Slider
     const elevationSlider = new ElevationSlider('elevation-slider', 0, 4000); // 0-4000m range
 
     const steepnessSlider = new SteepnessSlider('steepness-slider', config.DEFAULT_CUSTOM_MIN_SLOPE);
+
+    // Initialize Avalanche Mode Controls
+    const avalancheSteepnessSlider = new SteepnessSlider('avalanche-steepness-slider', 0);
+    const useElevationCheckbox = document.getElementById('avalanche-use-elevation') as HTMLInputElement;
+    const useAspectCheckbox = document.getElementById('avalanche-use-aspect') as HTMLInputElement;
 
     let aspectSelector: AspectSelector | null = null;
     const aspectContainer = document.getElementById('aspect-circle-container');
@@ -68,7 +74,14 @@ const initApp = async () => {
       const aspects = getSelectedAspects();
       const minSlope = steepnessSlider.getValue();
 
-      mapComponent.setCustomMode(true, min, max, aspects, minSlope);
+      mapComponent.setCustomModeParams(min, max, aspects, minSlope);
+    };
+
+    const updateAvalancheConfig = () => {
+      const useElevation = useElevationCheckbox.checked;
+      const useAspect = useAspectCheckbox.checked;
+      const minSlope = avalancheSteepnessSlider.getValue();
+      mapComponent.setAvalancheConfig(useElevation, useAspect, minSlope);
     };
 
     elevationSlider.setOnChange(() => updateCustomMode());
@@ -78,6 +91,11 @@ const initApp = async () => {
       aspectSelector.setOnChange(() => updateCustomMode());
     }
 
+    // Avalanche controls listeners
+    useElevationCheckbox.addEventListener('change', updateAvalancheConfig);
+    useAspectCheckbox.addEventListener('change', updateAvalancheConfig);
+    avalancheSteepnessSlider.setOnChange(() => updateAvalancheConfig());
+
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     modeRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
@@ -85,19 +103,26 @@ const initApp = async () => {
 
         if (mode === config.MODES.CUSTOM) {
           customControls?.classList.remove('hidden');
-          // Trigger custom mode update with current values
+          avalancheControls?.classList.add('hidden');
           updateCustomMode();
+          mapComponent.setMode(config.MODES.CUSTOM);
         } else if (mode === config.MODES.STEEPNESS) {
           customControls?.classList.add('hidden');
-          mapComponent.setSteepnessMode(true);
+          avalancheControls?.classList.add('hidden');
+          mapComponent.setMode(config.MODES.STEEPNESS);
         } else {
           customControls?.classList.add('hidden');
-          mapComponent.setCustomMode(false); // This switches back to avalanche
+          avalancheControls?.classList.remove('hidden');
+          updateAvalancheConfig();
+          mapComponent.setMode(config.MODES.AVALANCHE);
         }
       });
     });
 
-    // applyBtn listener removed
+    // Initialize with default state
+    if (document.querySelector(`input[name="mode"][value="${config.MODES.AVALANCHE}"]:checked`)) {
+      avalancheControls?.classList.remove('hidden');
+    }
 
   } catch (error) {
     console.error('Failed to initialize app:', error);

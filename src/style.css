@@ -39,6 +39,35 @@
    font-size: 16px;
  }
 
+ #avalanche-controls {
+   margin-top: 15px;
+   border-top: 1px solid #eee;
+   padding-top: 15px;
+ }
+
+ #avalanche-controls.hidden {
+   display: none;
+ }
+
+ .checkbox-group {
+   margin-bottom: 10px;
+ }
+
+ .checkbox-group label {
+   display: flex;
+   align-items: center;
+   cursor: pointer;
+   font-size: 14px;
+   color: var(--input-text-color, #333);
+ }
+
+ .checkbox-group input[type="checkbox"] {
+   margin-right: 8px;
+   accent-color: var(--primary-btn-color, #007bff);
+   width: 16px;
+   height: 16px;
+ }
+
  .mode-toggle {
    display: flex;
    flex-direction: column;

@@ -42,6 +42,11 @@ export class MapComponent {
     private customMinSlope: number = 0;
     private isGenerating: boolean = false;
 
+    // Avalanche Mode Configuration
+    private avalancheUseElevation: boolean = true;
+    private avalancheUseAspect: boolean = true;
+    private avalancheMinSlope: number = 0;
+
     constructor(containerId: string) {
         this.containerId = containerId;
         maptiler.config.apiKey = import.meta.env.VITE_MAPTILER_KEY;
@@ -81,30 +86,24 @@ export class MapComponent {
         });
     }
 
-    //TODO rework setCustomMode and setSteepnessMode to be an universal mode switch
-    async setCustomMode(enabled: boolean, min?: number, max?: number, aspects?: string[], minSlope?: number) {
-        if (enabled) {
-            this.currentMode = config.MODES.CUSTOM;
-            if (min !== undefined) this.customMin = min;
-            if (max !== undefined) this.customMax = max;
-            if (aspects !== undefined) this.customAspects = aspects;
-            if (minSlope !== undefined) this.customMinSlope = minSlope;
-            await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
-        } else {
-            // If disabling custom mode, we might be going back to avalanche or steepness.
-            // For now, let's default to avalanche if just toggling custom off, 
-            // but the UI should handle explicit mode switches.
-            this.currentMode = config.MODES.AVALANCHE;
-            this.updateVisualization();
-        }
+    async setMode(mode: config.VisualizationMode) {
+        this.currentMode = mode;
+        this.updateVisualization();
     }
 
-    async setSteepnessMode(enabled: boolean) {
-        if (enabled) {
-            this.currentMode = config.MODES.STEEPNESS;
-            await this.renderSteepness();
-        } else {
-            this.currentMode = config.MODES.AVALANCHE;
+    async setCustomModeParams(min?: number, max?: number, aspects?: string[], minSlope?: number) {
+        if (min !== undefined) this.customMin = min;
+        if (max !== undefined) this.customMax = max;
+        if (aspects !== undefined) this.customAspects = aspects;
+        if (minSlope !== undefined) this.customMinSlope = minSlope;
+        this.updateVisualization();
+    }
+
+    async setAvalancheConfig(useElevation: boolean, useAspect: boolean, minSlope: number) {
+        this.avalancheUseElevation = useElevation;
+        this.avalancheUseAspect = useAspect;
+        this.avalancheMinSlope = minSlope;
+        if (this.currentMode === config.MODES.AVALANCHE) {
             this.updateVisualization();
         }
     }
@@ -155,9 +154,10 @@ export class MapComponent {
             rules.push({
                 bounds: regionBounds,
                 geometry: regionFeature.geometry,
-                minElev: band.minElev,
-                maxElev: band.maxElev,
-                validAspects: band.validAspects,
+                minElev: this.avalancheUseElevation ? band.minElev : 0,
+                maxElev: this.avalancheUseElevation ? band.maxElev : 9000,
+                validAspects: this.avalancheUseAspect ? band.validAspects : undefined,
+                minSlope: this.avalancheMinSlope,
                 color: color,
                 properties: {
                     regionId: band.regionID,
