@@ -36,7 +36,7 @@ export const STEEPNESS_THRESHOLDS = [
 ];
 
 // Custom Mode
-export const CUSTOM_MODE_COLOR = '#FF99';
+export const CUSTOM_MODE_COLOR = '#FF9900';
 export const DEFAULT_CUSTOM_MIN_ELEV = 1500;
 export const DEFAULT_CUSTOM_MAX_ELEV = 9000;
 export const DEFAULT_CUSTOM_MIN_SLOPE = 0;
