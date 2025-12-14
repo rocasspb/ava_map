@@ -32,16 +32,24 @@ const initApp = async () => {
     const modeToggleContainer = document.querySelector('.mode-toggle');
     if (modeToggleContainer) {
       modeToggleContainer.innerHTML = '';
+      modeToggleContainer.innerHTML = '';
+      modeToggleContainer.classList.add('segmented-control');
+
       Object.values(config.MODES).forEach(mode => {
-        const label = document.createElement('label');
+        const inputId = `mode-${mode}`;
+
         const input = document.createElement('input');
         input.type = 'radio';
         input.name = 'mode';
+        input.id = inputId;
         input.value = mode;
         if (mode === config.MODES.AVALANCHE) input.checked = true;
 
-        label.appendChild(input);
-        label.appendChild(document.createTextNode(` ${config.MODE_LABELS[mode]}`));
+        const label = document.createElement('label');
+        label.htmlFor = inputId;
+        label.textContent = config.MODE_LABELS[mode];
+
+        modeToggleContainer.appendChild(input);
         modeToggleContainer.appendChild(label);
       });
     }

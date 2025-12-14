@@ -9,14 +9,14 @@ export const TERRAIN_EXAGGERATION = 1;
 
 export const MODES = {
     AVALANCHE: 'avalanche',
-    CUSTOM: 'custom',
-    STEEPNESS: 'steepness'
+    STEEPNESS: 'steepness',
+    CUSTOM: 'custom'
 } as const;
 
 export type VisualizationMode = typeof MODES[keyof typeof MODES];
 
 export const MODE_LABELS: Record<VisualizationMode, string> = {
-    [MODES.AVALANCHE]: 'Avalanche Risk',
+    [MODES.AVALANCHE]: 'Avalanche',
     [MODES.STEEPNESS]: 'Steepness',
     [MODES.CUSTOM]: 'Custom',
 };

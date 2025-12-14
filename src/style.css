@@ -70,11 +70,44 @@ html {
   top: 3px;
 }
 
-.mode-toggle {
+/* Segmented Control */
+.segmented-control {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  padding: 4px;
   margin-bottom: 15px;
+  gap: 0;
+  /* Handled by padding/margin if needed */
+}
+
+.segmented-control input[type="radio"] {
+  display: none;
+}
+
+.segmented-control label {
+  flex: 1;
+  text-align: center;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #666;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.segmented-control input[type="radio"]:checked+label {
+  background-color: white;
+  color: #009668;
+  /* Teal brand color */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+.segmented-control label:hover {
+  color: #333;
 }
 
 .input-group {
