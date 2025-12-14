@@ -5,8 +5,11 @@ import * as config from './config';
 import { AspectSelector } from './components/AspectSelector';
 import { SteepnessSlider } from './components/SteepnessSlider';
 import { ElevationSlider } from './components/ElevationSlider';
+import { AnalyticsService } from './services/analytics';
 
 const initApp = async () => {
+  AnalyticsService.initialize();
+
   const mapComponent = new MapComponent('map');
   mapComponent.initMap();
 
@@ -124,6 +127,7 @@ const initApp = async () => {
           updateAvalancheConfig();
           mapComponent.setMode(config.MODES.AVALANCHE);
         }
+        AnalyticsService.trackEvent('select_mode', { mode });
       });
     });
 
@@ -137,10 +141,13 @@ const initApp = async () => {
       });
     }
 
-    // Initialize with default state
     if (document.querySelector(`input[name="mode"][value="${config.MODES.AVALANCHE}"]:checked`)) {
       avalancheControls?.classList.remove('hidden');
     }
+
+    // Initial tracking
+    AnalyticsService.trackEvent('page_view');
+    AnalyticsService.trackEvent('select_mode', { mode: config.MODES.AVALANCHE });
 
   } catch (error) {
     console.error('Failed to initialize app:', error);

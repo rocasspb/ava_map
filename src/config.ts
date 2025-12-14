@@ -111,6 +111,7 @@ export const METERS_PER_DEGREE = 111111;
 
 // API
 export const API_BASE_URL = import.meta.env.DEV ? 'http://localhost:3000/api' : '/api';
+export const GA_MEASUREMENT_ID = 'G-BW5BE3CBCD';
 
 // Deprecated: Moved to backend
 // export const AVALANCHE_DATA_URLS = [ ... ];
