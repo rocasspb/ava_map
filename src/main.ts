@@ -119,6 +119,16 @@ const initApp = async () => {
       });
     });
 
+    // Mobile Drawer Toggle
+    const controlsToggle = document.getElementById('controls-toggle');
+    const controls = document.getElementById('controls');
+
+    if (controlsToggle && controls) {
+      controlsToggle.addEventListener('click', () => {
+        controls.classList.toggle('collapsed');
+      });
+    }
+
     // Initialize with default state
     if (document.querySelector(`input[name="mode"][value="${config.MODES.AVALANCHE}"]:checked`)) {
       avalancheControls?.classList.remove('hidden');
