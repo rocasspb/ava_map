@@ -234,7 +234,7 @@
    width: 90%;
    /* Leave space for thumb at ends */
    margin: 0 auto;
-   height: 12px;
+   height: 8px;
    cursor: pointer;
    top: 10px;
  }
@@ -265,8 +265,8 @@
  /* Steps (Dots) */
  .slider-step-dot {
    position: absolute;
-   width: 16px;
-   height: 16px;
+   width: 12px;
+   height: 12px;
    background: white;
    /* Default empty state */
    border: 2px solid #fff;
@@ -280,10 +280,10 @@
  /* Thumb */
  .slider-thumb {
    position: absolute;
-   width: 24px;
-   height: 24px;
+   width: 16px;
+   height: 16px;
    background: white;
-   border: 4px solid #ff9900;
+   border: 2px solid #ff9900;
    /* Default */
    border-radius: 50%;
    top: 50%;
@@ -393,8 +393,8 @@
  /* Thumbs */
  .elevation-thumb {
    position: absolute;
-   width: 20px;
-   height: 20px;
+   width: 16px;
+   height: 16px;
    background: #009688;
    border: 3px solid white;
    border-radius: 50%;
