@@ -66,9 +66,10 @@ const initApp = async () => {
     const steepnessSlider = new SteepnessSlider('steepness-slider', config.DEFAULT_CUSTOM_MIN_SLOPE);
 
     // Initialize Avalanche Mode Controls
-    const avalancheSteepnessSlider = new SteepnessSlider('avalanche-steepness-slider', 0);
+
     const useElevationCheckbox = document.getElementById('avalanche-use-elevation') as HTMLInputElement;
     const useAspectCheckbox = document.getElementById('avalanche-use-aspect') as HTMLInputElement;
+    const applySteepnessCheckbox = document.getElementById('avalanche-apply-steepness') as HTMLInputElement;
 
     let aspectSelector: AspectSelector | null = null;
     const aspectContainer = document.getElementById('aspect-circle-container');
@@ -91,8 +92,8 @@ const initApp = async () => {
     const updateAvalancheConfig = () => {
       const useElevation = useElevationCheckbox.checked;
       const useAspect = useAspectCheckbox.checked;
-      const minSlope = avalancheSteepnessSlider.getValue();
-      mapComponent.setAvalancheConfig(useElevation, useAspect, minSlope);
+      const applySteepness = applySteepnessCheckbox.checked;
+      mapComponent.setAvalancheConfig(useElevation, useAspect, applySteepness);
     };
 
     elevationSlider.setOnChange(() => updateCustomMode());
@@ -105,7 +106,7 @@ const initApp = async () => {
     // Avalanche controls listeners
     useElevationCheckbox.addEventListener('change', updateAvalancheConfig);
     useAspectCheckbox.addEventListener('change', updateAvalancheConfig);
-    avalancheSteepnessSlider.setOnChange(() => updateAvalancheConfig());
+    applySteepnessCheckbox.addEventListener('change', updateAvalancheConfig);
 
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     modeRadios.forEach(radio => {

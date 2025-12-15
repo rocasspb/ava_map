@@ -14,6 +14,7 @@ interface GenerationRule {
     minElev: number;
     maxElev: number;
     minSlope?: number;
+    applySteepnessLogic?: boolean;
     validAspects?: string[];
     color: string;
     properties: {
@@ -45,7 +46,7 @@ export class MapComponent {
     // Avalanche Mode Configuration
     private avalancheUseElevation: boolean = true;
     private avalancheUseAspect: boolean = true;
-    private avalancheMinSlope: number = 0;
+    private avalancheApplySteepness: boolean = false;
 
     constructor(containerId: string) {
         this.containerId = containerId;
@@ -99,10 +100,10 @@ export class MapComponent {
         this.updateVisualization();
     }
 
-    async setAvalancheConfig(useElevation: boolean, useAspect: boolean, minSlope: number) {
+    async setAvalancheConfig(useElevation: boolean, useAspect: boolean, applySteepness: boolean) {
         this.avalancheUseElevation = useElevation;
         this.avalancheUseAspect = useAspect;
-        this.avalancheMinSlope = minSlope;
+        this.avalancheApplySteepness = applySteepness;
         if (this.currentMode === config.MODES.AVALANCHE) {
             this.updateVisualization();
         }
@@ -157,7 +158,7 @@ export class MapComponent {
                 minElev: this.avalancheUseElevation ? band.minElev : 0,
                 maxElev: this.avalancheUseElevation ? band.maxElev : 9000,
                 validAspects: this.avalancheUseAspect ? band.validAspects : undefined,
-                minSlope: this.avalancheMinSlope,
+                applySteepnessLogic: this.avalancheApplySteepness,
                 color: color,
                 properties: {
                     regionId: band.regionID,
@@ -383,12 +384,58 @@ export class MapComponent {
                                 }
                             }
 
-                            // Check slope if defined
-                            if (rule.minSlope && rule.minSlope > 0) {
-                                const slope = calculateSlope(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
-                                if (slope === null || slope < rule.minSlope) {
+                            // Check slope if defined or if logic is required
+                            let slope: number | null = null;
+                            if ((rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic) {
+                                slope = calculateSlope(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
+                                if (slope === null || rule.minSlope && slope < rule.minSlope) {
                                     continue;
                                 }
+                            }
+
+                            let finalColor = rule.color;
+
+                            if (rule.applySteepnessLogic && slope !== null) {
+                                const level = rule.properties.dangerLevel; // e.g. "considerable", "high"
+                                const dlValue = level ? (config.DANGER_LEVEL_VALUES[level] || 0) : 0;
+                                let keep = false;
+
+                                // Logic:
+                                // Level 4+ (High+): >30 Red, else Orange
+                                // Level 3 (Considerable): >35 Red, >30 Orange
+                                // Level 2 (Moderate): >40 Red, >35 Orange
+                                // Level 1 (Low): >40 Orange
+
+                                if (dlValue >= 4) {
+                                    keep = true;
+                                    if (slope > 30) finalColor = config.DANGER_COLORS['high']; // Red
+                                    else finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                } else if (dlValue === 3) {
+                                    if (slope > 35) {
+                                        keep = true;
+                                        finalColor = config.DANGER_COLORS['high']; // Red
+                                    } else if (slope > 30) {
+                                        keep = true;
+                                        finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    }
+                                } else if (dlValue === 2) {
+                                    if (slope > 40) {
+                                        keep = true;
+                                        finalColor = config.DANGER_COLORS['high']; // Red
+                                    } else if (slope > 35) {
+                                        keep = true;
+                                        finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    }
+                                } else if (dlValue === 1) {
+                                    if (slope > 40) {
+                                        keep = true;
+                                        finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    }
+                                }
+
+                                // If not applySteepness, we follow standard rules (keep = true by default as we reached here)
+                                // But here we are IN the logic block. If keep is false, we skip.
+                                if (!keep) continue;
                             }
 
                             features.push({
@@ -399,9 +446,10 @@ export class MapComponent {
                                 },
                                 properties: {
                                     ...rule.properties,
-                                    color: rule.color,
+                                    color: finalColor,
                                     elevation: elevation,
-                                    aspect: aspect
+                                    aspect: aspect,
+                                    slope: slope
                                 }
                             });
                         }
