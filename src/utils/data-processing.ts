@@ -83,7 +83,7 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
 
                 // Let's look at the DangerRatings first as they directly correlate to the color.
                 bulletin.dangerRatings.forEach(rating => {
-                    const { min: rMin, max: rMax } = parseElevation(rating.elevation);
+                    var { min: rMin, max: rMax } = parseElevation(rating.elevation);
 
                     // Find matching problems based on elevation overlap
                     let aspects: string[] | undefined = undefined;
@@ -94,11 +94,18 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                     });
 
                     if (matchingProblems.length > 0) {
-                        // Collect unique aspects from all matching problems
+                        // Collect unique aspects and elevation bands from all matching problems
                         const aspectSet = new Set<string>();
+                        var minElev = rMax; //here it is reversed to find the intersection
+                        var maxElev = rMin;
                         matchingProblems.forEach(p => {
                             p.aspects.forEach(a => aspectSet.add(a));
+                            const { min: pMin, max: pMax } = parseElevation(p.elevation);
+                            minElev = Math.min(minElev, pMin);
+                            maxElev = Math.max(maxElev, pMax);
                         });
+                        rMin = minElev;
+                        rMax = maxElev;
                         aspects = Array.from(aspectSet);
                     }
 
