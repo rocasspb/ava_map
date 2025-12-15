@@ -1,5 +1,8 @@
 export const AVALANCHE_DATA_URLS = [
     'https://static.avalanche.report/bulletins/latest/EUREGIO_en_CAAMLv6.json',
+    'https://static.lawinen-warnung.eu/bulletins/latest/AT-05_en_CAAMLv6.json',
+    'https://static.lawinen-warnung.eu/bulletins/latest/AT-08_en_CAAMLv6.json',
+    'https://static.lawinen-warnung.eu/bulletins/latest/DE-BY_en_CAAMLv6.json',
     'https://aws.slf.ch/api/bulletin/caaml/en/json',
     'https://bollettini.aineva.it/albina_files/latest/IT-21_en_CAAMLv6.json',
     'https://bollettini.aineva.it/albina_files/latest/IT-23_en_CAAMLv6.json',
@@ -16,6 +19,7 @@ export const REGION_GEOJSON_URLS = [
     'https://regions.avalanches.org/micro-regions/AT-06_micro-regions.geojson.json',
     'https://regions.avalanches.org/micro-regions/AT-07_micro-regions.geojson.json',
     'https://regions.avalanches.org/micro-regions/AT-08_micro-regions.geojson.json',
+    'https://regions.avalanches.org/micro-regions/DE-BY_micro-regions.geojson.json',
     'https://regions.avalanches.org/micro-regions/CH_micro-regions.geojson.json',
     'https://regions.avalanches.org/micro-regions/FR_micro-regions.geojson.json',
     'https://regions.avalanches.org/micro-regions/IT-21_micro-regions.geojson.json',
