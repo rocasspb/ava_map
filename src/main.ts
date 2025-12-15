@@ -153,11 +153,11 @@ const initApp = async () => {
     // Zoom-dependent logic
     const map = mapComponent.getMap();
     if (map) {
-      let wasLowZoom = map.getZoom() < 10;
+      let wasLowZoom = map.getZoom() < config.ZOOM_THRESHOLD_MODE_SWITCH;
 
       const handleZoomChange = () => {
         const zoom = map.getZoom();
-        const isLowZoom = zoom < 10;
+        const isLowZoom = zoom < config.ZOOM_THRESHOLD_MODE_SWITCH;
 
         // UI Elements
 
@@ -167,7 +167,7 @@ const initApp = async () => {
         const modeRadios = document.querySelectorAll('input[name="mode"]') as NodeListOf<HTMLInputElement>;
 
         if (isLowZoom) {
-          console.log('Low Zoom (<10): Forcing Avalanche Mode & Elevation Only');
+          console.log(`Low Zoom (<${config.ZOOM_THRESHOLD_MODE_SWITCH}): Forcing Avalanche Mode & Elevation Only`);
 
           // 1. Force Avalanche Mode
           mapComponent.setMode(config.MODES.AVALANCHE);
@@ -199,7 +199,7 @@ const initApp = async () => {
           });
 
         } else {
-          // High Zoom (>10)
+          // High Zoom
 
           // Unlock Controls
 
