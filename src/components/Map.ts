@@ -44,7 +44,7 @@ export class MapComponent {
     private isGenerating: boolean = false;
 
     // Avalanche Mode Configuration
-    private avalancheUseElevation: boolean = true;
+
     private avalancheUseAspect: boolean = true;
     private avalancheApplySteepness: boolean = false;
 
@@ -100,8 +100,7 @@ export class MapComponent {
         this.updateVisualization();
     }
 
-    async setAvalancheConfig(useElevation: boolean, useAspect: boolean, applySteepness: boolean) {
-        this.avalancheUseElevation = useElevation;
+    async setAvalancheConfig(useAspect: boolean, applySteepness: boolean) {
         this.avalancheUseAspect = useAspect;
         this.avalancheApplySteepness = applySteepness;
         if (this.currentMode === config.MODES.AVALANCHE) {
@@ -155,8 +154,8 @@ export class MapComponent {
             rules.push({
                 bounds: regionBounds,
                 geometry: regionFeature.geometry,
-                minElev: this.avalancheUseElevation ? band.minElev : 0,
-                maxElev: this.avalancheUseElevation ? band.maxElev : 9000,
+                minElev: band.minElev,
+                maxElev: band.maxElev,
                 validAspects: this.avalancheUseAspect ? band.validAspects : undefined,
                 applySteepnessLogic: this.avalancheApplySteepness,
                 color: color,
