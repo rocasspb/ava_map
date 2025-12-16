@@ -40,22 +40,14 @@ export const STEEPNESS_THRESHOLDS = [
 export const CUSTOM_MODE_COLOR = '#FF9900';
 export const DEFAULT_CUSTOM_MIN_ELEV = 1500;
 export const DEFAULT_CUSTOM_MAX_ELEV = 9000;
-export const DEFAULT_CUSTOM_MIN_SLOPE = 0;
-
-export const SLOPE_OPTIONS = [
-    { value: 0, label: 'Flat (> 0°)' },
-    { value: 10, label: 'Moderate (> 10°)' },
-    { value: 30, label: 'Steep (> 30°)' },
-    { value: 35, label: 'Very Steep (> 35°)' },
-    { value: 40, label: 'Extreme (> 40°)' }
-];
 
 export const SLOPE_SLIDER_STEPS = [
-    { value: 0, label: 'Mod.', subLabel: '<30°', color: '#2ECC71' }, // Green
+    { value: 25, label: 'Mod.', subLabel: '≥25°', color: '#2ECC71' }, // Green
     { value: 30, label: 'Steep', subLabel: '≥30°', color: '#F1C40F' }, // Yellow
     { value: 35, label: 'Very', subLabel: '≥35°', color: '#E67E22' }, // Orange
     { value: 40, label: 'Extr.', subLabel: '≥40°', color: '#E74C3C' }  // Red
 ];
+export const DEFAULT_CUSTOM_MIN_SLOPE = SLOPE_SLIDER_STEPS[0].value;
 
 export const ASPECT_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 

@@ -5,7 +5,7 @@ import { processRegionElevations } from '../utils/data-processing';
 import * as config from '../config';
 
 import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
-import { calculateAspect, calculateSlope } from '../utils/geo-utils';
+import { calculateTerrainMetrics } from '../utils/geo-utils';
 import { MapPopup } from './MapPopup';
 
 interface GenerationRule {
@@ -40,7 +40,7 @@ export class MapComponent {
     private customMin: number = config.DEFAULT_CUSTOM_MIN_ELEV;
     private customMax: number = config.DEFAULT_CUSTOM_MAX_ELEV;
     private customAspects: string[] = [];
-    private customMinSlope: number = 0;
+    private customMinSlope: number = config.DEFAULT_CUSTOM_MIN_SLOPE;
     private isGenerating: boolean = false;
 
     // Avalanche Mode Configuration
@@ -374,21 +374,29 @@ export class MapComponent {
 
                     if (elevation !== null && elevation !== undefined) {
                         if (elevation >= rule.minElev && elevation <= rule.maxElev) {
-                            // Check aspect if specific aspects are defined for this rule
                             let aspect: string | null = null;
-                            if (rule.validAspects && rule.validAspects.length > 0) {
-                                aspect = calculateAspect(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
-                                if (!aspect || !rule.validAspects.includes(aspect)) {
+                            let slope: number | null = null;
+
+                            const checkAspect = rule.validAspects && rule.validAspects.length > 0;
+                            const checkSlope = (rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic;
+
+                            if (checkAspect || checkSlope) {
+                                const metrics = calculateTerrainMetrics(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
+                                if (!metrics) continue; // Missing data for slope/aspect
+
+                                slope = metrics.slope;
+                                aspect = metrics.aspect;
+
+                                // Check Aspect
+                                if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
                                     continue;
                                 }
-                            }
 
-                            // Check slope if defined or if logic is required
-                            let slope: number | null = null;
-                            if ((rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic) {
-                                slope = calculateSlope(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
-                                if (slope === null || rule.minSlope && slope < rule.minSlope) {
-                                    continue;
+                                // Check Slope
+                                if (checkSlope) {
+                                    if (slope === null || (rule.minSlope && slope < rule.minSlope)) {
+                                        continue;
+                                    }
                                 }
                             }
 
