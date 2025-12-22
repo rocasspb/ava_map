@@ -1,16 +1,24 @@
-# [AvaAwa.eu](https://avaawa.eu/)
+# [AvaAwa.eu](https://avaawa.eu/?utm_source=github)
 A tool to assess avalanche terrain, based on the slope parameters and regional avalanche forecast. Key advanage to the tools existing on the market is the highlight of the avalanche danger not only based on the region, but also considering the aspect and elevation relevant to the avalanche problems, specified in the bulletin. The information on the specific problems is avaiiable at a glance, looking at a particular route you are planning.
 
 ![Avalanche danger](src/docs/img/bulletins.png)
 ![Slope steepness](src/docs/img/readme_img.png)
 
 ## Features
-- **Avalanche Risk Visualization**: Fetches and displays real-time avalanche danger levels from official bulletins. Based on the regional avalanche bulletin, exact avalanche problems are highlighted on the map. A user can choose to factor slope aspect and steepness to highlight the most dangerous terrain. In this case, avalanche risk matrix is used to color-code potentially dangerous terrain.
-- **Steepness Mode**: Color-coded visualization of terrain steepness to identify potential avalanche terrain (>30°, >35°, >40°).
-- **Custom Analysis Mode**: Interactive tools to filter terrain based on:
+- **Avalanche Bulletin Mode**: Fetches and displays real-time avalanche danger levels from official bulletins
+- **Risk Mode**: Highlights risky terrain, as per the regional avalanche bulletin, based on the following parameters of the relevant problems(see the matrix below):
+  - Danger level
+  - Elevation range
+  - Aspect
+  - Steepness
+
+![Matrix](src/docs/img/matrix.png)
+- **Custom Mode**: Interactive tools to filter terrain based on:
   - Elevation range (min/max)
-  - Slope angle
+  - Slope angle(>30°, >35°, >40°)
   - Aspect 
+
+**Disclaimer**: This tool is for informational purposes only. It does not replace official avalanche bulletins or professional danger assessments. You are solely responsible for your safety; entering the backcountry involves significant risk.
 
 ## Tech Stack
 

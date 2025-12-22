@@ -9,16 +9,16 @@ export const TERRAIN_SOURCE_URL_PREFIX = 'https://api.maptiler.com/tiles/terrain
 export const TERRAIN_EXAGGERATION = 1;
 
 export const MODES = {
-    AVALANCHE: 'avalanche',
-    STEEPNESS: 'steepness',
+    BULLETIN: 'bulletin',
+    RISK: 'risk',
     CUSTOM: 'custom'
 } as const;
 
 export type VisualizationMode = typeof MODES[keyof typeof MODES];
 
 export const MODE_LABELS: Record<VisualizationMode, string> = {
-    [MODES.AVALANCHE]: 'Avalanche',
-    [MODES.STEEPNESS]: 'Steepness',
+    [MODES.BULLETIN]: 'Bulletin',
+    [MODES.RISK]: 'Risk',
     [MODES.CUSTOM]: 'Custom',
 };
 

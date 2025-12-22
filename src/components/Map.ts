@@ -36,17 +36,16 @@ export class MapComponent {
     private popup: MapPopup;
 
     // State for dynamic updates
-    private currentMode: config.VisualizationMode = config.MODES.AVALANCHE;
+    private currentMode: config.VisualizationMode = config.MODES.BULLETIN;
     private customMin: number = config.DEFAULT_CUSTOM_MIN_ELEV;
     private customMax: number = config.DEFAULT_CUSTOM_MAX_ELEV;
     private customAspects: string[] = [];
     private customMinSlope: number = config.DEFAULT_CUSTOM_MIN_SLOPE;
     private isGenerating: boolean = false;
 
-    // Avalanche Mode Configuration
-
-    private avalancheUseAspect: boolean = true;
-    private avalancheApplySteepness: boolean = false;
+    public getMode(): config.VisualizationMode {
+        return this.currentMode;
+    }
 
     constructor(containerId: string) {
         this.containerId = containerId;
@@ -100,14 +99,6 @@ export class MapComponent {
         this.updateVisualization();
     }
 
-    async setAvalancheConfig(useAspect: boolean, applySteepness: boolean) {
-        this.avalancheUseAspect = useAspect;
-        this.avalancheApplySteepness = applySteepness;
-        if (this.currentMode === config.MODES.AVALANCHE) {
-            this.updateVisualization();
-        }
-    }
-
     private async refreshPoints() {
         if (this.isGenerating) return;
         this.updateVisualization();
@@ -116,8 +107,8 @@ export class MapComponent {
     async updateVisualization() {
         if (this.currentMode === config.MODES.CUSTOM) {
             await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
-        } else if (this.currentMode === config.MODES.STEEPNESS) {
-            await this.renderSteepness();
+        } else if (this.currentMode === config.MODES.RISK && this.lastAvalancheData && this.lastRegionsGeoJSON) {
+            await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
         }
@@ -130,7 +121,6 @@ export class MapComponent {
         this.isGenerating = true;
         this.lastAvalancheData = data;
         this.lastRegionsGeoJSON = regionsGeoJSON;
-        this.currentMode = config.MODES.AVALANCHE;
 
         const elevationBands = processRegionElevations(data);
 
@@ -150,14 +140,15 @@ export class MapComponent {
 
             const regionBounds = getBounds(regionFeature);
             const color = this.getDangerColor(band.dangerLevel);
+            const useAspectANdElevation = this.currentMode === config.MODES.RISK;
 
             rules.push({
                 bounds: regionBounds,
                 geometry: regionFeature.geometry,
                 minElev: band.minElev,
                 maxElev: band.maxElev,
-                validAspects: this.avalancheUseAspect ? band.validAspects : undefined,
-                applySteepnessLogic: this.avalancheApplySteepness,
+                validAspects: useAspectANdElevation ? band.validAspects : undefined,
+                applySteepnessLogic: useAspectANdElevation,
                 color: color,
                 properties: {
                     regionId: band.regionID,
@@ -181,7 +172,6 @@ export class MapComponent {
         if (!this.map) return;
 
         this.isGenerating = true;
-        this.currentMode = config.MODES.CUSTOM;
         this.customMin = min;
         this.customMax = max;
         this.customAspects = aspects;
@@ -190,46 +180,10 @@ export class MapComponent {
         // Global bounds for Euregio (approximate)
         const bounds = config.EUREGIO_BOUNDS;
 
-        const rule: GenerationRule = {
+        const orderedRules: GenerationRule[] = config.STEEPNESS_THRESHOLDS.filter(t => t.minSlope >= minSlope).map(t => ({
             bounds: bounds,
             minElev: min,
             maxElev: max,
-            minSlope: minSlope,
-            validAspects: aspects,
-            color: config.CUSTOM_MODE_COLOR,
-            properties: {}
-        };
-
-        const pointsFeatures = await this.generatePoints([rule]);
-        this.updatePointSource(pointsFeatures);
-        this.addPointLayer();
-
-        // Remove outlines in custom mode if they exist
-        if (this.map.getLayer('regions-outline')) {
-            this.map.removeLayer('regions-outline');
-        }
-        if (this.map.getSource('regions-outline-source')) {
-            this.map.removeSource('regions-outline-source');
-        }
-        this.isGenerating = false;
-    }
-
-    async renderSteepness() {
-        await this.mapLoaded;
-        if (!this.map) return;
-
-        this.isGenerating = true;
-        this.currentMode = config.MODES.STEEPNESS;
-
-        // Global bounds for Euregio (approximate)
-        const bounds = config.EUREGIO_BOUNDS;
-
-        // Define steepness bands
-        // We order them so that higher steepness (Red) is drawn last (on top)
-        const orderedRules: GenerationRule[] = config.STEEPNESS_THRESHOLDS.map(t => ({
-            bounds: bounds,
-            minElev: 0,
-            maxElev: 9000,
             minSlope: t.minSlope,
             color: t.color,
             properties: { steepness: t.label }
@@ -239,7 +193,7 @@ export class MapComponent {
         this.updatePointSource(pointsFeatures);
         this.addPointLayer();
 
-        // Remove outlines
+        // Remove outlines in custom mode if they exist
         if (this.map.getLayer('regions-outline')) {
             this.map.removeLayer('regions-outline');
         }
@@ -385,18 +339,15 @@ export class MapComponent {
                                 if (!metrics) continue; // Missing data for slope/aspect
 
                                 slope = metrics.slope;
-                                aspect = metrics.aspect;
-
-                                // Check Aspect
-                                if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
-                                    continue;
-                                }
-
-                                // Check Slope
                                 if (checkSlope) {
                                     if (slope === null || (rule.minSlope && slope < rule.minSlope)) {
                                         continue;
                                     }
+                                }
+
+                                aspect = metrics.aspect;
+                                if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
+                                    continue;
                                 }
                             }
 

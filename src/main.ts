@@ -46,7 +46,7 @@ const initApp = async () => {
         input.name = 'mode';
         input.id = inputId;
         input.value = mode;
-        if (mode === config.MODES.AVALANCHE) input.checked = true;
+        if (mode === config.MODES.BULLETIN) input.checked = true;
 
         const label = document.createElement('label');
         label.htmlFor = inputId;
@@ -58,18 +58,11 @@ const initApp = async () => {
     }
 
     const customControls = document.getElementById('custom-controls');
-    const avalancheControls = document.getElementById('avalanche-controls');
 
     // Initialize Elevation Slider
     const elevationSlider = new ElevationSlider('elevation-slider', 0, 4000); // 0-4000m range
-
     const steepnessSlider = new SteepnessSlider('steepness-slider', config.DEFAULT_CUSTOM_MIN_SLOPE);
 
-    // Initialize Avalanche Mode Controls
-
-
-    const useAspectCheckbox = document.getElementById('avalanche-use-aspect') as HTMLInputElement;
-    const applySteepnessCheckbox = document.getElementById('avalanche-apply-steepness') as HTMLInputElement;
 
     let aspectSelector: AspectSelector | null = null;
     const aspectContainer = document.getElementById('aspect-circle-container');
@@ -89,24 +82,12 @@ const initApp = async () => {
       mapComponent.setCustomModeParams(min, max, aspects, minSlope);
     };
 
-    const updateAvalancheConfig = () => {
-      // const useElevation = true; // No longer needed
-      const useAspect = useAspectCheckbox.checked;
-      const applySteepness = applySteepnessCheckbox.checked;
-      mapComponent.setAvalancheConfig(useAspect, applySteepness);
-    };
-
     elevationSlider.setOnChange(() => updateCustomMode());
     steepnessSlider.setOnChange(() => updateCustomMode());
 
     if (aspectSelector) {
       aspectSelector.setOnChange(() => updateCustomMode());
     }
-
-    // Avalanche controls listeners
-
-    useAspectCheckbox.addEventListener('change', updateAvalancheConfig);
-    applySteepnessCheckbox.addEventListener('change', updateAvalancheConfig);
 
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     modeRadios.forEach(radio => {
@@ -115,18 +96,14 @@ const initApp = async () => {
 
         if (mode === config.MODES.CUSTOM) {
           customControls?.classList.remove('hidden');
-          avalancheControls?.classList.add('hidden');
           updateCustomMode();
           mapComponent.setMode(config.MODES.CUSTOM);
-        } else if (mode === config.MODES.STEEPNESS) {
+        } else if (mode === config.MODES.RISK) {
           customControls?.classList.add('hidden');
-          avalancheControls?.classList.add('hidden');
-          mapComponent.setMode(config.MODES.STEEPNESS);
+          mapComponent.setMode(config.MODES.RISK);
         } else {
           customControls?.classList.add('hidden');
-          avalancheControls?.classList.remove('hidden');
-          updateAvalancheConfig();
-          mapComponent.setMode(config.MODES.AVALANCHE);
+          mapComponent.setMode(config.MODES.BULLETIN);
         }
         AnalyticsService.trackEvent('select_mode', { mode });
       });
@@ -142,13 +119,9 @@ const initApp = async () => {
       });
     }
 
-    if (document.querySelector(`input[name="mode"][value="${config.MODES.AVALANCHE}"]:checked`)) {
-      avalancheControls?.classList.remove('hidden');
-    }
-
     // Initial tracking
     AnalyticsService.trackEvent('page_view');
-    AnalyticsService.trackEvent('select_mode', { mode: config.MODES.AVALANCHE });
+    AnalyticsService.trackEvent('select_mode', { mode: config.MODES.BULLETIN });
 
     // Zoom-dependent logic
     const map = mapComponent.getMap();
@@ -158,54 +131,26 @@ const initApp = async () => {
       const handleZoomChange = () => {
         const zoom = map.getZoom();
         const isLowZoom = zoom < config.ZOOM_THRESHOLD_MODE_SWITCH;
-
-        // UI Elements
-
-        const useAspectCheckbox = document.getElementById('avalanche-use-aspect') as HTMLInputElement;
-        const applySteepnessCheckbox = document.getElementById('avalanche-apply-steepness') as HTMLInputElement;
-
         const modeRadios = document.querySelectorAll('input[name="mode"]') as NodeListOf<HTMLInputElement>;
 
         if (isLowZoom) {
-          console.log(`Low Zoom (<${config.ZOOM_THRESHOLD_MODE_SWITCH}): Forcing Avalanche Mode & Elevation Only`);
+          if (mapComponent.getMode() === config.MODES.BULLETIN) {
+            return
+          }
+          console.log(`Low Zoom (<${config.ZOOM_THRESHOLD_MODE_SWITCH}): Forcing Bulletin Mode`);
 
-          // 1. Force Avalanche Mode
-          mapComponent.setMode(config.MODES.AVALANCHE);
-
-          // Update UI Radio
-          const avRadio = document.querySelector(`input[name="mode"][value="${config.MODES.AVALANCHE}"]`) as HTMLInputElement;
-          if (avRadio) avRadio.checked = true;
-
-          // Show avalanche controls, hide others
-          const customControls = document.getElementById('custom-controls');
-          const avalancheControls = document.getElementById('avalanche-controls');
-          customControls?.classList.add('hidden');
-          avalancheControls?.classList.remove('hidden');
-
-          // 2. Force Config: (Elevation always ON implicitly), others OFF
-          // We set the component state but also need to update UI checkboxes to match
-          mapComponent.setAvalancheConfig(false, false);
-
-
-          if (useAspectCheckbox) { useAspectCheckbox.checked = false; useAspectCheckbox.disabled = true; }
-          if (applySteepnessCheckbox) { applySteepnessCheckbox.checked = false; applySteepnessCheckbox.disabled = true; }
-
-          // Disable Mode Radios (except Avalanche, effectively locking it)
           modeRadios.forEach(r => {
-            if (r.value !== config.MODES.AVALANCHE) {
+            if (r.value === config.MODES.BULLETIN) {
+              r.click();
+            } else {
               r.disabled = true;
-              r.parentElement?.classList.add('disabled-label'); // Optional styling
+              r.parentElement?.classList.add('disabled-label');
             }
           });
-
         } else {
           // High Zoom
 
           // Unlock Controls
-
-          if (useAspectCheckbox) useAspectCheckbox.disabled = false;
-          if (applySteepnessCheckbox) applySteepnessCheckbox.disabled = false;
-
           modeRadios.forEach(r => {
             r.disabled = false;
             r.parentElement?.classList.remove('disabled-label');
@@ -213,18 +158,14 @@ const initApp = async () => {
 
           // Transition Logic: If coming from low zoom, enable Aspect and Steepness
           if (wasLowZoom) {
-            console.log('Transition to High Zoom: Enabling Aspect & Steepness');
-
-            // Turn ON Aspect and Steepness
-            // Ensure Elevation is also ON (it was forced ON, but good to ensure)
-            mapComponent.setAvalancheConfig(true, true);
-
-
-            if (useAspectCheckbox) useAspectCheckbox.checked = true;
-            if (applySteepnessCheckbox) applySteepnessCheckbox.checked = true;
+            console.log('Transition to High Zoom: Switching to Risk Mode');
+            modeRadios.forEach(r => {
+              if (r.value === config.MODES.RISK) {
+                r.click();
+              }
+            });
           }
         }
-
         wasLowZoom = isLowZoom;
       };
 
