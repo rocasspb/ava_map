@@ -110,6 +110,14 @@ html {
   color: #333;
 }
 
+.disabled-label {
+  opacity: 0.5 !important;
+  pointer-events: none;
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  cursor: not-allowed !important;
+}
+
 .input-group {
   margin-bottom: 10px;
 }

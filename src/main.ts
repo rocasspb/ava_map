@@ -48,6 +48,11 @@ const initApp = async () => {
         input.value = mode;
         if (mode === config.MODES.BULLETIN) input.checked = true;
 
+        if (config.DEFAULT_ZOOM < config.ZOOM_THRESHOLD_MODE_SWITCH && mode !== config.MODES.BULLETIN) {
+          input.disabled = true;
+          modeToggleContainer.classList.add('disabled-label');
+        }
+
         const label = document.createElement('label');
         label.htmlFor = inputId;
         label.textContent = config.MODE_LABELS[mode];
@@ -141,7 +146,8 @@ const initApp = async () => {
 
           modeRadios.forEach(r => {
             if (r.value === config.MODES.BULLETIN) {
-              r.click();
+              r.checked = true;
+              r.dispatchEvent(new Event('change'));
             } else {
               r.disabled = true;
               r.parentElement?.classList.add('disabled-label');
@@ -161,7 +167,8 @@ const initApp = async () => {
             console.log('Transition to High Zoom: Switching to Risk Mode');
             modeRadios.forEach(r => {
               if (r.value === config.MODES.RISK) {
-                r.click();
+                r.checked = true;
+                r.dispatchEvent(new Event('change'));
               }
             });
           }
