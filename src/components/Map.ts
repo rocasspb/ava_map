@@ -110,11 +110,11 @@ export class MapComponent {
         } else if (this.currentMode === config.MODES.RISK && this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
-            await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
+            await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON, true);
         }
     }
 
-    async renderAvalancheData(data: CaamlData, regionsGeoJSON: any) {
+    async renderAvalancheData(data: CaamlData, regionsGeoJSON: any, bulletin: boolean = false) {
         await this.mapLoaded;
         if (!this.map) return;
 
@@ -147,6 +147,7 @@ export class MapComponent {
                 geometry: regionFeature.geometry,
                 minElev: band.minElev,
                 maxElev: band.maxElev,
+                minSlope: bulletin ? undefined : 30, // avalanche risk is mostly valid for slopes >= 30°. For bulletins, we are coloring the whole region
                 validAspects: useAspectANdElevation ? band.validAspects : undefined,
                 applySteepnessLogic: useAspectANdElevation,
                 color: color,
@@ -185,6 +186,7 @@ export class MapComponent {
             minElev: min,
             maxElev: max,
             minSlope: t.minSlope,
+            validAspects: aspects,
             color: t.color,
             properties: { steepness: t.label }
         }));
@@ -331,6 +333,9 @@ export class MapComponent {
                             let aspect: string | null = null;
                             let slope: number | null = null;
 
+                            const level = rule.properties.dangerLevel; // e.g. "considerable", "high"
+                            let dlValue = level ? (config.DANGER_LEVEL_VALUES[level] || 0) : 0;
+
                             const checkAspect = rule.validAspects && rule.validAspects.length > 0;
                             const checkSlope = (rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic;
 
@@ -345,19 +350,17 @@ export class MapComponent {
                                     }
                                 }
 
+                                // For favourable aspects we use a common heuristic to reduce the danger level by 1
                                 aspect = metrics.aspect;
                                 if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
-                                    continue;
+                                    if (dlValue == 0) continue;
+                                    else if (dlValue > 1) dlValue--;
                                 }
                             }
 
                             let finalColor = rule.color;
 
                             if (rule.applySteepnessLogic && slope !== null) {
-                                const level = rule.properties.dangerLevel; // e.g. "considerable", "high"
-                                const dlValue = level ? (config.DANGER_LEVEL_VALUES[level] || 0) : 0;
-                                let keep = false;
-
                                 // Logic:
                                 // Level 4+ (High+): >30 Red, else Orange
                                 // Level 3 (Considerable): >35 Red, >30 Orange
@@ -365,35 +368,31 @@ export class MapComponent {
                                 // Level 1 (Low): >40 Orange
 
                                 if (dlValue >= 4) {
-                                    keep = true;
                                     if (slope > 30) finalColor = config.DANGER_COLORS['high']; // Red
                                     else finalColor = config.DANGER_COLORS['considerable']; // Orange
                                 } else if (dlValue === 3) {
                                     if (slope > 35) {
-                                        keep = true;
                                         finalColor = config.DANGER_COLORS['high']; // Red
                                     } else if (slope > 30) {
-                                        keep = true;
                                         finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    } else {
+                                        continue;
                                     }
                                 } else if (dlValue === 2) {
                                     if (slope > 40) {
-                                        keep = true;
                                         finalColor = config.DANGER_COLORS['high']; // Red
                                     } else if (slope > 35) {
-                                        keep = true;
                                         finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    } else {
+                                        continue;
                                     }
                                 } else if (dlValue === 1) {
                                     if (slope > 40) {
-                                        keep = true;
                                         finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    } else {
+                                        continue;
                                     }
                                 }
-
-                                // If not applySteepness, we follow standard rules (keep = true by default as we reached here)
-                                // But here we are IN the logic block. If keep is false, we skip.
-                                if (!keep) continue;
                             }
 
                             features.push({

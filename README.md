@@ -3,6 +3,7 @@ A tool to assess avalanche terrain, based on the slope parameters and regional a
 
 ![Avalanche danger](src/docs/img/bulletins.png)
 ![Slope steepness](src/docs/img/readme_img.png)
+![Custom mode](src/docs/img/custom_screen.png)
 
 ## Features
 - **Avalanche Bulletin Mode**: Fetches and displays real-time avalanche danger levels from official bulletins

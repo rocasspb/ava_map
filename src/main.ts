@@ -29,7 +29,7 @@ const initApp = async () => {
     console.log('Avalanche Data:', avalancheData);
     console.log('Regions GeoJSON:', regionsGeoJSON);
 
-    await mapComponent.renderAvalancheData(avalancheData, regionsGeoJSON);
+    await mapComponent.renderAvalancheData(avalancheData, regionsGeoJSON, true);
 
     // UI Controls
     const modeToggleContainer = document.querySelector('.mode-toggle');
