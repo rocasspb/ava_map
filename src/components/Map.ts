@@ -16,6 +16,7 @@ interface GenerationRule {
     minSlope?: number;
     applySteepnessLogic?: boolean;
     validAspects?: string[];
+    baseSpacing?: number;
     color: string;
     properties: {
         regionId?: string;
@@ -150,6 +151,7 @@ export class MapComponent {
                 minSlope: bulletin ? undefined : 30, // avalanche risk is mostly valid for slopes >= 30°. For bulletins, we are coloring the whole region
                 validAspects: useAspectANdElevation ? band.validAspects : undefined,
                 applySteepnessLogic: useAspectANdElevation,
+                baseSpacing: bulletin ? config.GRID_BASE_SPACING * config.GRID_BULLETIN_SPACING_MULTIPLIER : config.GRID_BASE_SPACING,
                 color: color,
                 properties: {
                     regionId: band.regionID,
@@ -288,18 +290,19 @@ export class MapComponent {
 
         // Dynamic grid spacing based on zoom
         const currentZoom = this.map!.getZoom();
-        const baseSpacing = config.GRID_BASE_SPACING;
         const baseZoom = config.GRID_BASE_ZOOM;
-        // Formula: spacing decreases as zoom increases (density increases)
-        let gridSpacingDeg = baseSpacing * Math.pow(config.GRID_DENSITY_FACTOR, baseZoom - currentZoom);
-
-        // Clamp spacing to avoid performance issues
-        gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
-        gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
 
         const mapBounds = this.map!.getBounds();
 
         for (const rule of rules) {
+            const baseSpacing = rule.baseSpacing || config.GRID_BASE_SPACING;
+            // Formula: spacing decreases as zoom increases (density increases)
+            let gridSpacingDeg = baseSpacing * Math.pow(config.GRID_DENSITY_FACTOR, baseZoom - currentZoom);
+
+            // Clamp spacing to avoid performance issues
+            gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
+            gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
+
             // Intersect rule bounds with map bounds to only generate visible points
             const minLng = Math.max(rule.bounds.minLng, mapBounds.getWest());
             const maxLng = Math.min(rule.bounds.maxLng, mapBounds.getEast());

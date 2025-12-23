@@ -28,6 +28,7 @@ export const GRID_BASE_ZOOM = 8;
 export const GRID_DENSITY_FACTOR = 1.8; // spacing decreases by this factor per zoom level diff
 export const GRID_MIN_SPACING = 0.0002; // ~20m
 export const GRID_MAX_SPACING = 0.05;
+export const GRID_BULLETIN_SPACING_MULTIPLIER = 1.2;
 
 // Steepness Mode
 export const STEEPNESS_THRESHOLDS = [
