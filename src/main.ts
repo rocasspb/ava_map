@@ -5,6 +5,7 @@ import { AspectSelector } from './components/AspectSelector';
 import { SteepnessSlider } from './components/SteepnessSlider';
 import { ElevationSlider } from './components/ElevationSlider';
 import { AnalyticsService } from './services/analytics';
+import matrixImg from './img/matrix.png';
 
 const initApp = async () => {
   AnalyticsService.initialize();
@@ -52,6 +53,12 @@ const initApp = async () => {
     }
 
     const customControls = document.getElementById('custom-controls');
+    const riskControls = document.getElementById('risk-controls');
+    const riskMatrixImg = document.getElementById('risk-matrix-img') as HTMLImageElement;
+
+    if (riskMatrixImg) {
+      riskMatrixImg.src = matrixImg;
+    }
 
     // Initialize Elevation Slider
     const elevationSlider = new ElevationSlider('elevation-slider', 0, 4000); // 0-4000m range
@@ -90,13 +97,16 @@ const initApp = async () => {
 
         if (mode === config.MODES.CUSTOM) {
           customControls?.classList.remove('hidden');
+          riskControls?.classList.add('hidden');
           updateCustomMode();
           mapComponent.setMode(config.MODES.CUSTOM);
         } else if (mode === config.MODES.RISK) {
           customControls?.classList.add('hidden');
+          riskControls?.classList.remove('hidden');
           mapComponent.setMode(config.MODES.RISK);
         } else {
           customControls?.classList.add('hidden');
+          riskControls?.classList.add('hidden');
           mapComponent.setMode(config.MODES.BULLETIN);
         }
         AnalyticsService.trackEvent('select_mode', { mode });

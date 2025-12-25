@@ -43,7 +43,6 @@ export const DEFAULT_CUSTOM_MIN_ELEV = 1500;
 export const DEFAULT_CUSTOM_MAX_ELEV = 9000;
 
 export const SLOPE_SLIDER_STEPS = [
-    { value: 25, label: 'Mod.', subLabel: '≥25°', color: '#2ECC71' }, // Green
     { value: 30, label: 'Steep', subLabel: '≥30°', color: '#F1C40F' }, // Yellow
     { value: 35, label: 'Very', subLabel: '≥35°', color: '#E67E22' }, // Orange
     { value: 40, label: 'Extr.', subLabel: '≥40°', color: '#E74C3C' }  // Red
