@@ -2,8 +2,8 @@ import * as maptiler from '@maptiler/sdk';
 
 // Map Defaults
 export const DEFAULT_CENTER: [number, number] = [11.6, 47.2];
-export const DEFAULT_ZOOM = 8;
-export const ZOOM_THRESHOLD_MODE_SWITCH = 10;
+export const DEFAULT_ZOOM = 9;
+export const ZOOM_THRESHOLD_MODE_SWITCH = 11;
 export const MAP_STYLE = maptiler.MapStyle.WINTER;
 export const TERRAIN_SOURCE_URL_PREFIX = 'https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=';
 export const TERRAIN_EXAGGERATION = 1;
@@ -81,9 +81,9 @@ export const DANGER_LEVEL_VALUES: Record<string, number> = {
 export const POINT_OPACITY = 0.6;
 // Interpolation for circle radius: [zoom, radius]
 export const POINT_RADIUS_STOPS = [
-    [8, 2],
-    [12, 5],
-    [15, 10]
+    [8, 3],
+    [12, 6],
+    [16, 18]
 ];
 
 export const OUTLINE_COLOR = '#000000';

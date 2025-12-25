@@ -3,6 +3,7 @@ import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
 import * as config from '../config';
+import { ApiService } from '../services/api';
 
 import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
 import { calculateTerrainMetrics } from '../utils/geo-utils';
@@ -57,7 +58,7 @@ export class MapComponent {
         this.popup = new MapPopup();
     }
 
-    initMap() {
+    async initMap() {
         this.map = new maptiler.Map({
             container: this.containerId,
             style: config.MAP_STYLE,
@@ -85,6 +86,20 @@ export class MapComponent {
 
             this.resolveMapLoaded();
         });
+
+        console.log('Fetching avalanche data...');
+        const [avalancheData, regionsGeoJSON] = await Promise.all([
+            ApiService.getAvalancheData(),
+            ApiService.getRegionsGeoJSON()
+        ]);
+
+        console.log('Avalanche Data:', avalancheData);
+        console.log('Regions GeoJSON:', regionsGeoJSON);
+
+        this.lastAvalancheData = avalancheData;
+        this.lastRegionsGeoJSON = regionsGeoJSON;
+
+        this.updateVisualization();
     }
 
     async setMode(mode: config.VisualizationMode) {
@@ -231,7 +246,7 @@ export class MapComponent {
                         ...config.POINT_RADIUS_STOPS.flat()
                     ],
                     'circle-opacity': config.POINT_OPACITY,
-                    'circle-pitch-alignment': 'map'
+                    'circle-pitch-alignment': 'viewport'
                 }
             });
         }

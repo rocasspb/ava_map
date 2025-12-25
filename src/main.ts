@@ -1,6 +1,5 @@
 import './style.css';
 import { MapComponent } from './components/Map';
-import { ApiService } from './services/api';
 import * as config from './config';
 import { AspectSelector } from './components/AspectSelector';
 import { SteepnessSlider } from './components/SteepnessSlider';
@@ -11,7 +10,6 @@ const initApp = async () => {
   AnalyticsService.initialize();
 
   const mapComponent = new MapComponent('map');
-  mapComponent.initMap();
 
   // Apply UI colors from config
   document.documentElement.style.setProperty('--primary-btn-color', config.UI_COLORS.PRIMARY_BUTTON);
@@ -20,16 +18,7 @@ const initApp = async () => {
   document.documentElement.style.setProperty('--bg-color', config.UI_COLORS.BACKGROUND);
 
   try {
-    console.log('Fetching avalanche data...');
-    const [avalancheData, regionsGeoJSON] = await Promise.all([
-      ApiService.getAvalancheData(),
-      ApiService.getRegionsGeoJSON()
-    ]);
-
-    console.log('Avalanche Data:', avalancheData);
-    console.log('Regions GeoJSON:', regionsGeoJSON);
-
-    await mapComponent.renderAvalancheData(avalancheData, regionsGeoJSON, true);
+    await mapComponent.initMap();
 
     // UI Controls
     const modeToggleContainer = document.querySelector('.mode-toggle');
