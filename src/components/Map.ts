@@ -87,19 +87,33 @@ export class MapComponent {
             this.resolveMapLoaded();
         });
 
+        await this.fetchData();
+
+        // Auto-refresh data
+        setInterval(() => {
+            console.log('Auto-refreshing avalanche data...');
+            this.fetchData();
+        }, config.DATA_REFRESH_INTERVAL);
+    }
+
+    private async fetchData() {
         console.log('Fetching avalanche data...');
-        const [avalancheData, regionsGeoJSON] = await Promise.all([
-            ApiService.getAvalancheData(),
-            ApiService.getRegionsGeoJSON()
-        ]);
+        try {
+            const [avalancheData, regionsGeoJSON] = await Promise.all([
+                ApiService.getAvalancheData(),
+                ApiService.getRegionsGeoJSON()
+            ]);
 
-        console.log('Avalanche Data:', avalancheData);
-        console.log('Regions GeoJSON:', regionsGeoJSON);
+            console.log('Avalanche Data:', avalancheData);
+            console.log('Regions GeoJSON:', regionsGeoJSON);
 
-        this.lastAvalancheData = avalancheData;
-        this.lastRegionsGeoJSON = regionsGeoJSON;
+            this.lastAvalancheData = avalancheData;
+            this.lastRegionsGeoJSON = regionsGeoJSON;
 
-        this.updateVisualization();
+            this.updateVisualization();
+        } catch (error) {
+            console.error('Failed to fetch avalanche data:', error);
+        }
     }
 
     async setMode(mode: config.VisualizationMode) {

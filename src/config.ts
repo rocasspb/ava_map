@@ -111,3 +111,5 @@ export const GA_MEASUREMENT_ID = 'G-BW5BE3CBCD';
 // export const AVALANCHE_DATA_URLS = [ ... ];
 // export const REGION_GEOJSON_URLS = [ ... ];
 
+export const DATA_REFRESH_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+
