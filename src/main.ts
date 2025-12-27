@@ -123,6 +123,24 @@ const initApp = async () => {
       });
     }
 
+    // 3D/2D Toggle
+    const togglePitchBtn = document.getElementById('toggle-pitch');
+    if (togglePitchBtn) {
+      togglePitchBtn.addEventListener('click', () => {
+        const map = mapComponent.getMap();
+        if (map) {
+          const currentPitch = map.getPitch();
+          if (currentPitch < 30) {
+            map.easeTo({ pitch: 60 });
+            togglePitchBtn.textContent = '2D';
+          } else {
+            map.easeTo({ pitch: 0 });
+            togglePitchBtn.textContent = '3D';
+          }
+        }
+      });
+    }
+
     // Initial tracking
     AnalyticsService.trackEvent('page_view');
     AnalyticsService.trackEvent('select_mode', { mode: config.MODES.BULLETIN });
