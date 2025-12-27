@@ -29,6 +29,7 @@ export const GRID_DENSITY_FACTOR = 1.8; // spacing decreases by this factor per 
 export const GRID_MIN_SPACING = 0.0002; // ~20m
 export const GRID_MAX_SPACING = 0.05;
 export const GRID_BULLETIN_SPACING_MULTIPLIER = 1.2;
+export const MAX_RENDER_DIST_DEG = 0.1; // Limit rendering to ~10km from center
 
 // Steepness Mode
 export const STEEPNESS_THRESHOLDS = [

@@ -341,11 +341,23 @@ export class MapComponent {
             gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
             gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
 
-            // Intersect rule bounds with map bounds to only generate visible points
-            const minLng = Math.max(rule.bounds.minLng, mapBounds.getWest());
-            const maxLng = Math.min(rule.bounds.maxLng, mapBounds.getEast());
-            const minLat = Math.max(rule.bounds.minLat, mapBounds.getSouth());
-            const maxLat = Math.min(rule.bounds.maxLat, mapBounds.getNorth());
+            const mapCenter = this.map!.getCenter();
+
+            // Apply strict limit only when in 3D (pitched) and zoomed in
+            // This prevents performance issues when looking at the horizon in 3D
+            const is3DHighZoom = this.map!.getPitch() > 0 && currentZoom > config.ZOOM_THRESHOLD_MODE_SWITCH;
+
+            let minLng = Math.max(rule.bounds.minLng, mapBounds.getWest());
+            let maxLng = Math.min(rule.bounds.maxLng, mapBounds.getEast());
+            let minLat = Math.max(rule.bounds.minLat, mapBounds.getSouth());
+            let maxLat = Math.min(rule.bounds.maxLat, mapBounds.getNorth());
+
+            if (is3DHighZoom) {
+                minLng = Math.max(minLng, mapCenter.lng - config.MAX_RENDER_DIST_DEG);
+                maxLng = Math.min(maxLng, mapCenter.lng + config.MAX_RENDER_DIST_DEG);
+                minLat = Math.max(minLat, mapCenter.lat - config.MAX_RENDER_DIST_DEG);
+                maxLat = Math.min(maxLat, mapCenter.lat + config.MAX_RENDER_DIST_DEG);
+            }
 
             // Skip if rule region is not visible
             if (minLng > maxLng || minLat > maxLat) continue;
