@@ -1,6 +1,6 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
-import type { CaamlData } from '../types/avalanche';
+import type { CaamlData, AvalancheProblem } from '../types/avalanche';
 import { processRegionElevations } from '../utils/data-processing';
 import * as config from '../config';
 import { ApiService } from '../services/api';
@@ -172,11 +172,20 @@ export class MapComponent {
             const color = this.getDangerColor(band.dangerLevel);
             const useAspectANdElevation = this.currentMode === config.MODES.RISK;
 
+            // Handle 'treeline' magic string in elevation data
+            // If we find 'treeline' in the bounds, we use 1800m as the value for the rule generation
+            // but keep the original text in properties for the popup.
+            const { min: ruleMinElev, max: ruleMaxElev } = this.adjustElevationForTreeline(
+                band.minElev,
+                band.maxElev,
+                band.avalancheProblems
+            );
+
             rules.push({
                 bounds: regionBounds,
                 geometry: regionFeature.geometry,
-                minElev: band.minElev,
-                maxElev: band.maxElev,
+                minElev: ruleMinElev,
+                maxElev: ruleMaxElev,
                 minSlope: bulletin ? undefined : 30, // avalanche risk is mostly valid for slopes >= 30°. For bulletins, we are coloring the whole region
                 validAspects: useAspectANdElevation ? band.validAspects : undefined,
                 applySteepnessLogic: useAspectANdElevation,
@@ -451,6 +460,25 @@ export class MapComponent {
             type: 'FeatureCollection',
             features: features
         };
+    }
+
+    private adjustElevationForTreeline(currentMin: number, currentMax: number, problems: AvalancheProblem[]): { min: number, max: number } {
+        let min = currentMin;
+        let max = currentMax;
+
+        if (problems && problems.length > 0) {
+            problems.forEach(p => {
+                if (p.elevation) {
+                    if (p.elevation.lowerBound && String(p.elevation.lowerBound).toLowerCase() === 'treeline') {
+                        min = Math.max(min, config.TREELINE_ELEVATION);
+                    }
+                    if (p.elevation.upperBound && String(p.elevation.upperBound).toLowerCase() === 'treeline') {
+                        max = Math.min(max, config.TREELINE_ELEVATION);
+                    }
+                }
+            });
+        }
+        return { min, max };
     }
 
     private getDangerColor(level: string): string {

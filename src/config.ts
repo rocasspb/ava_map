@@ -96,6 +96,7 @@ export const EUREGIO_BOUNDS = { minLng: -10.0, maxLng: 20.0, minLat: 35.0, maxLa
 
 // Data Processing
 export const DEFAULT_MAX_ELEVATION = 9000;
+export const TREELINE_ELEVATION = 1800; //this is a gap. Optimally, we need to find real tre line data for the place
 
 // Calculations
 export const ASPECT_CALCULATION_OFFSET = 0.0001;

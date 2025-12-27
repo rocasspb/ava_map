@@ -72,13 +72,7 @@ export class MapPopup {
                         // Elevation
                         if (p.elevation) {
                             let elevText = '';
-                            if (p.elevation.lowerBound && p.elevation.upperBound) {
-                                elevText = `${p.elevation.lowerBound}m - ${p.elevation.upperBound}m`;
-                            } else if (p.elevation.lowerBound) {
-                                elevText = `> ${p.elevation.lowerBound}m`;
-                            } else if (p.elevation.upperBound) {
-                                elevText = `< ${p.elevation.upperBound}m`;
-                            }
+                            elevText = this.formatElevationRange(p.elevation);
 
                             if (elevText) {
                                 html += `<div>Elevation: ${elevText}</div>`;
@@ -113,5 +107,19 @@ export class MapPopup {
 
         html += `</div>`;
         return html;
+    }
+    private formatElevationRange(elevation: { lowerBound?: string, upperBound?: string }): string {
+        const formatVal = (val: string) => {
+            return /^\d+$/.test(val) ? `${val}m` : val;
+        };
+
+        if (elevation.lowerBound && elevation.upperBound) {
+            return `${formatVal(elevation.lowerBound)} - ${formatVal(elevation.upperBound)}`;
+        } else if (elevation.lowerBound) {
+            return `> ${formatVal(elevation.lowerBound)}`;
+        } else if (elevation.upperBound) {
+            return `< ${formatVal(elevation.upperBound)}`;
+        }
+        return '';
     }
 }
