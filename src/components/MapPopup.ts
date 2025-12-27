@@ -1,5 +1,6 @@
 import * as maptiler from '@maptiler/sdk';
 import { getDangerIcon, getProblemIcon, getProblemLabel } from '../utils/icons';
+import { createAspectSVG } from '../utils/AspectGraphics';
 
 export class MapPopup {
     private popup: maptiler.Popup;
@@ -22,8 +23,6 @@ export class MapPopup {
     private generateContent(properties: any): string {
         const regionId = properties['regionId'];
         const danger = properties['dangerLevel'];
-        const elevation = properties['elevation'];
-        const aspect = properties['aspect'];
         const bulletinText = properties['bulletinText'];
         const avalancheProblemsProp = properties['avalancheProblems'];
 
@@ -40,10 +39,6 @@ export class MapPopup {
             html += `<strong>Danger Level: ${danger}</strong></div>`;
         }
 
-        html += `<div style="margin-bottom: 4px; font-size: 0.9em;">
-                    Elevation: ${Math.round(elevation)}m<br>
-                    ${aspect ? `Aspect: ${aspect}` : ''}
-                 <div>`;
 
         if (avalancheProblemsProp) {
             try {
@@ -61,10 +56,13 @@ export class MapPopup {
                         html += `<li style="display: flex; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">`;
 
                         if (problemIcon) {
-                            html += `<div style="flex-shrink: 0; margin-right: 12px;">`;
+                            html += `<div style="flex-shrink: 0;">`;
                             html += `<img src="${problemIcon}" alt="${problemLabel}" style="height: 50px; width: auto;">`;
                             html += `</div>`;
                         }
+                        html += `<div style="display: flex; align-items: center; margin-top: 2px; margin-right: 12px;">
+                            ${createAspectSVG(new Set(p.aspects), { size: 50 }).outerHTML}
+                            </div>`;
 
                         html += `<div style="flex-grow: 1;">`;
                         html += `<div><strong>${problemLabel}</strong></div>`;
@@ -87,10 +85,6 @@ export class MapPopup {
                             }
                         }
 
-                        // Aspects
-                        if (p.aspects && p.aspects.length > 0) {
-                            html += `<div>Aspects: ${p.aspects.join(', ')}</div>`;
-                        }
 
                         // Frequency
                         if (p.frequency) {
