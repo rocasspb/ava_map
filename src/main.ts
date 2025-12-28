@@ -200,6 +200,21 @@ const initApp = async () => {
       map.on('zoomend', handleZoomChange);
     }
 
+    // Disclaimer Modal
+    const disclaimerModal = document.getElementById('disclaimer-modal');
+    const acceptBtn = document.getElementById('disclaimer-accept-btn');
+    const STORAGE_KEY = 'disclaimer_accepted';
+
+    // Check if disclaimer was already accepted
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      disclaimerModal?.classList.remove('hidden');
+    }
+
+    acceptBtn?.addEventListener('click', () => {
+      disclaimerModal?.classList.add('hidden');
+      localStorage.setItem(STORAGE_KEY, 'true');
+    });
+
   } catch (error) {
     console.error('Failed to initialize app:', error);
   }
