@@ -325,6 +325,17 @@ export class MapComponent {
 
     private async generatePoints(rules: GenerationRule[]): Promise<any> {
         const features: any[] = [];
+        const elevationCache = new Map<string, number | null>();
+
+        const getElevation = (p: [number, number]): number | null => {
+            const key = `${p[0]},${p[1]}`;
+            if (elevationCache.has(key)) {
+                return elevationCache.get(key)!;
+            }
+            const elevation = this.map?.queryTerrainElevation(p) ?? null;
+            elevationCache.set(key, elevation);
+            return elevation;
+        };
 
         // Dynamic grid spacing based on zoom
         const currentZoom = this.map!.getZoom();
@@ -379,7 +390,7 @@ export class MapComponent {
                     }
 
                     // 2. Check elevation
-                    const elevation = this.map?.queryTerrainElevation(point);
+                    const elevation = getElevation(point);
 
                     if (elevation !== null && elevation !== undefined) {
                         if (elevation >= rule.minElev && elevation <= rule.maxElev) {
@@ -393,7 +404,7 @@ export class MapComponent {
                             const checkSlope = (rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic;
 
                             if (checkAspect || checkSlope) {
-                                const metrics = calculateTerrainMetrics(point, (p) => this.map?.queryTerrainElevation(p) ?? null);
+                                const metrics = calculateTerrainMetrics(point, getElevation);
                                 if (!metrics) continue; // Missing data for slope/aspect
 
                                 slope = metrics.slope;
