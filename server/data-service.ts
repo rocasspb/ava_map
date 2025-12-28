@@ -37,9 +37,33 @@ class DataService {
         return !cache.data || (Date.now() - cache.lastFetchTime > REFRESH_INTERVAL_MS);
     }
 
+    private async fetchFrenchBulletin() {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const dates = [tomorrow, now];
+        
+        for (const date of dates) {
+            const dateStr = date.toISOString().split('T')[0];
+            const url = `https://static.avalanche.report/eaws_bulletins/${dateStr}/${dateStr}-FR.json`;
+            try {
+                const response = await axios.get<CaamlData>(url);
+                console.log(`Fetched French bulletin from ${url}`);
+                return response;
+            } catch (error) {
+                // Continue to next date
+            }
+        }
+        throw new Error('French bulletin not available');
+    }
+
     private async refreshAvalancheData() {
         try {
-            const requests = AVALANCHE_DATA_URLS.map(url => axios.get<CaamlData>(url));
+            const requests = [
+                ...AVALANCHE_DATA_URLS.map(url => axios.get<CaamlData>(url)),
+                this.fetchFrenchBulletin()
+            ];
             const results = await Promise.allSettled(requests);
 
             const successfulResponses = results
