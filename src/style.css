@@ -545,9 +545,8 @@ button:hover {
 }
 
 /* Floating 3D Toggle Button */
-#toggle-pitch {
+.floating-btn {
   position: absolute;
-  bottom: 60px;
   right: 5px;
   width: 30px;
   height: 30px;
@@ -566,16 +565,25 @@ button:hover {
   transition: all 0.2s ease;
   margin: 0;
   padding: 0;
+  text-decoration: none;
 }
 
-#toggle-pitch:hover {
+.floating-btn:hover {
   background: #f8f9fa;
   transform: scale(1.05);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-#toggle-pitch:active {
+.floating-btn:active {
   transform: scale(0.95);
+}
+
+#toggle-pitch {
+  bottom: 100px;
+}
+
+#help-btn {
+  bottom: 60px;
 }
 
 /* Modal Styles */
