@@ -313,54 +313,52 @@ export class MapComponent {
     private handleMapClick(e: any) {
         const point: [number, number] = [e.lngLat.lng, e.lngLat.lat];
         
-        const elevation = this.map!.queryTerrainElevation(e.lngLat);
-        if (elevation === null) return;
-
-        for (const rule of this.currentRules) {
-            if (point[0] < rule.bounds.minLng || point[0] > rule.bounds.maxLng ||
-                point[1] < rule.bounds.minLat || point[1] > rule.bounds.maxLat) {
-                continue;
-            }
-
-            if (rule.geometry) {
+        // Find the region containing the point
+        let clickedRegionId: string | null = null;
+        
+        if (this.lastRegionsGeoJSON && this.lastRegionsGeoJSON.features) {
+            for (const feature of this.lastRegionsGeoJSON.features) {
                 let isInside = false;
-                if (rule.geometry.type === 'Polygon') {
-                    isInside = isPointInPolygon(point, rule.geometry.coordinates);
-                } else if (rule.geometry.type === 'MultiPolygon') {
-                    isInside = isPointInMultiPolygon(point, rule.geometry.coordinates);
+                if (feature.geometry.type === 'Polygon') {
+                    isInside = isPointInPolygon(point, feature.geometry.coordinates);
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    isInside = isPointInMultiPolygon(point, feature.geometry.coordinates);
                 }
-                if (!isInside) continue;
-            }
-
-            if (elevation < rule.minElev || elevation > rule.maxElev) continue;
-
-            const getElev = (p: [number, number]) => this.map!.queryTerrainElevation({ lng: p[0], lat: p[1] });
-            
-            let aspect: string | null = null;
-            let slope: number | null = null;
-            
-            const checkAspect = rule.validAspects && rule.validAspects.length > 0;
-            const checkSlope = (rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic;
-
-            if (checkAspect || checkSlope) {
-                const metrics = calculateTerrainMetrics(point, getElev);
-                if (!metrics) continue;
-                slope = metrics.slope;
-                aspect = metrics.aspect;
-
-                if (checkSlope) {
-                    if (slope === null || (rule.minSlope && slope < rule.minSlope)) continue;
-                }
-                if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
-                     const level = rule.properties.dangerLevel;
-                     let dlValue = level ? (config.DANGER_LEVEL_VALUES[level] || 0) : 0;
-                     if (dlValue == 0) continue;
-                     if (dlValue > 1) dlValue--;
+                
+                if (isInside) {
+                    clickedRegionId = feature.properties.id;
+                    break;
                 }
             }
-            
-            this.popup.show(this.map!, e.lngLat, rule.properties);
-            return;
+        }
+
+        if (!clickedRegionId) return;
+
+        // Find the bulletin for this region
+        if (this.lastAvalancheData && this.lastAvalancheData.bulletins) {
+            const bulletin = this.lastAvalancheData.bulletins.find(b => 
+                b.regions.some(r => r.regionID.startsWith(clickedRegionId))
+            );
+
+            if (bulletin) {
+                let bulletinText = "";
+                if (bulletin.avalancheActivity) {
+                    const parts = [];
+                    if (bulletin.avalancheActivity.highlights) parts.push(bulletin.avalancheActivity.highlights);
+                    if (bulletin.avalancheActivity.comment) parts.push(bulletin.avalancheActivity.comment);
+                    bulletinText = parts.join('\n\n');
+                }
+
+                const properties = {
+                    regionId: clickedRegionId,
+                    dangerRatings: bulletin.dangerRatings,
+                    dangerLevel: bulletin.dangerRatings[0]?.mainValue, // Fallback
+                    avalancheProblems: bulletin.avalancheProblems,
+                    bulletinText: bulletinText
+                };
+
+                this.popup.show(this.map!, e.lngLat, properties);
+            }
         }
     }
 

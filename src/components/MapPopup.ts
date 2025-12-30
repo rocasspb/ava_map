@@ -22,6 +22,7 @@ export class MapPopup {
 
     private generateContent(properties: any): string {
         const regionId = properties['regionId'];
+        const dangerRatings = properties['dangerRatings'];
         const danger = properties['dangerLevel'];
         const bulletinText = properties['bulletinText'];
         const avalancheProblemsProp = properties['avalancheProblems'];
@@ -30,7 +31,38 @@ export class MapPopup {
 
         if (regionId) {
             html += `<h3 style="margin: 0 0 4px 0;">Region: ${regionId}</h3>`;
+        }
 
+        if (dangerRatings && Array.isArray(dangerRatings) && dangerRatings.length > 0) {
+            html += `<div style="margin-bottom: 8px;"><strong>Danger Ratings:</strong>`;
+            dangerRatings.forEach((rating: any) => {
+                const level = rating.mainValue;
+                const icon = getDangerIcon(level);
+                
+                html += `<div style="display: flex; align-items: center; margin-top: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">`;
+                
+                if (icon) {
+                    html += `<img src="${icon}" alt="${level}" style="height: 30px; margin-right: 8px;">`;
+                }
+                
+                html += `<div>`;
+                html += `<div><strong>Level: ${level}</strong></div>`;
+                
+                if (rating.elevation) {
+                    const elevText = this.formatElevationRange(rating.elevation);
+                    if (elevText) {
+                        html += `<div style="font-size: 0.85em;">Elevation: ${elevText}</div>`;
+                    }
+                }
+                
+                if (rating.validAspects && rating.validAspects.length > 0) {
+                     html += `<div style="margin-top: 2px;">${createAspectSVG(new Set(rating.validAspects), { size: 30 }).outerHTML}</div>`;
+                }
+                
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+        } else if (danger) {
             const dangerIcon = getDangerIcon(danger);
             html += `<div style="display: flex; align-items: center; margin-bottom: 4px;">`;
             if (dangerIcon) {
