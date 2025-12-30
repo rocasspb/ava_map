@@ -1,6 +1,6 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
-import type {AvalancheProblem, CaamlData} from '../types/avalanche';
+import type {CaamlData} from '../types/avalanche';
 import {processRegionElevations} from '../utils/data-processing';
 import * as config from '../config';
 import {ApiService} from '../services/api';
@@ -8,24 +8,8 @@ import {ApiService} from '../services/api';
 import {getBounds, isPointInMultiPolygon, isPointInPolygon} from '../utils/geometry';
 import {calculateTerrainMetrics} from '../utils/geo-utils';
 import {MapPopup} from './MapPopup';
-
-interface GenerationRule {
-    bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number };
-    geometry?: any;
-    minElev: number;
-    maxElev: number;
-    minSlope?: number;
-    applySteepnessLogic?: boolean;
-    validAspects?: string[];
-    color: string;
-    properties: {
-        regionId?: string;
-        dangerLevel?: string;
-        steepness?: string;
-        avalancheProblems?: any[];
-        bulletinText?: string;
-    };
-}
+import {hexToRgb, adjustElevationForTreeline, getDangerColor} from '../utils/map-helpers';
+import type {GenerationRule} from '../types/GenerationRule';
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
@@ -175,10 +159,10 @@ export class MapComponent {
             if (!regionFeature) continue;
 
             const regionBounds = getBounds(regionFeature);
-            const color = this.getDangerColor(band.dangerLevel);
+            const color = getDangerColor(band.dangerLevel);
             const useAspectANdElevation = this.currentMode === config.MODES.RISK;
 
-            const {min: ruleMinElev, max: ruleMaxElev} = this.adjustElevationForTreeline(
+            const {min: ruleMinElev, max: ruleMaxElev} = adjustElevationForTreeline(
                 band.minElev,
                 band.maxElev,
                 band.avalancheProblems
@@ -305,10 +289,7 @@ export class MapComponent {
 
     private handleMapClick(e: any) {
         const point: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-        
-        // Find the region containing the point
         let clickedRegionId: string | null = null;
-        
         if (this.lastRegionsGeoJSON && this.lastRegionsGeoJSON.features) {
             for (const feature of this.lastRegionsGeoJSON.features) {
                 let isInside = false;
@@ -326,8 +307,6 @@ export class MapComponent {
         }
 
         if (!clickedRegionId) return;
-
-        // Find the bulletin for this region
         if (this.lastAvalancheData && this.lastAvalancheData.bulletins) {
             const bulletin = this.lastAvalancheData.bulletins.find(b => 
                 b.regions.some(r => r.regionID.startsWith(clickedRegionId))
@@ -425,7 +404,7 @@ export class MapComponent {
              const sY = Math.max(0, startY);
              const eY = Math.min(height, endY);
 
-             const rgb = this.hexToRgb(rule.color);
+             const rgb = hexToRgb(rule.color);
              if (!rgb) continue;
 
              for (let x = sX; x < eX; x++) {
@@ -494,7 +473,7 @@ export class MapComponent {
                                     if (slope > 40) finalColor = config.DANGER_COLORS['considerable'];
                                     else continue;
                                 }
-                                const c = this.hexToRgb(finalColor);
+                                const c = hexToRgb(finalColor);
                                 if (c) finalRgb = c;
                             }
 
@@ -516,38 +495,6 @@ export class MapComponent {
                 [west, north - height * gridSpacingDeg]
             ]
         };
-    }
-
-    private hexToRgb(hex: string): { r: number, g: number, b: number } | null {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : null;
-    }
-
-    private adjustElevationForTreeline(currentMin: number, currentMax: number, problems: AvalancheProblem[]): { min: number, max: number } {
-        let min = currentMin;
-        let max = currentMax;
-
-        if (problems && problems.length > 0) {
-            problems.forEach(p => {
-                if (p.elevation) {
-                    if (p.elevation.lowerBound && String(p.elevation.lowerBound).toLowerCase() === 'treeline') {
-                        min = Math.max(min, config.TREELINE_ELEVATION);
-                    }
-                    if (p.elevation.upperBound && String(p.elevation.upperBound).toLowerCase() === 'treeline') {
-                        max = Math.min(max, config.TREELINE_ELEVATION);
-                    }
-                }
-            });
-        }
-        return { min, max };
-    }
-
-    private getDangerColor(level: string): string {
-        return config.DANGER_COLORS[level] || config.DANGER_COLORS['default'];
     }
 
     getMap() {
