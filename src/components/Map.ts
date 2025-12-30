@@ -233,7 +233,7 @@ export class MapComponent {
         this.isGenerating = false;
     }
 
-    private updateRasterSource(data: { coordinates: number[][] }) {
+    private updateRasterSource(data: { coordinates: [[number, number], [number, number], [number, number], [number, number]] }) {
         const sourceId = 'avalanche-raster-source';
         const source = this.map!.getSource(sourceId) as any;
         
@@ -334,7 +334,7 @@ export class MapComponent {
         }
     }
 
-    private async drawToCanvas(rules: GenerationRule[]): Promise<{ coordinates: number[][] } | null> {
+    private async drawToCanvas(rules: GenerationRule[]): Promise<{ coordinates: [[number, number], [number, number], [number, number], [number, number]] } | null> {
         if (!this.map || !this.canvas) return null;
 
         const bounds = this.map.getBounds();
