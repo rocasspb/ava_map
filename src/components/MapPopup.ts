@@ -1,6 +1,7 @@
 import * as maptiler from '@maptiler/sdk';
 import { getDangerIcon, getProblemIcon, getProblemLabel } from '../utils/icons';
 import { createAspectSVG } from '../utils/AspectGraphics';
+import {DANGER_LEVEL_VALUES} from "../config.ts";
 
 export class MapPopup {
     private popup: maptiler.Popup;
@@ -35,31 +36,34 @@ export class MapPopup {
 
         if (dangerRatings && Array.isArray(dangerRatings) && dangerRatings.length > 0) {
             html += `<div style="margin-bottom: 8px;"><strong>Danger Ratings:</strong>`;
-            dangerRatings.forEach((rating: any) => {
-                const level = rating.mainValue;
-                const icon = getDangerIcon(level);
-                
-                html += `<div style="display: flex; align-items: center; margin-top: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">`;
-                
-                if (icon) {
-                    html += `<img src="${icon}" alt="${level}" style="height: 30px; margin-right: 8px;">`;
-                }
-                
-                html += `<div>`;
-                html += `<div><strong>Level: ${level}</strong></div>`;
-                
-                if (rating.elevation) {
-                    const elevText = this.formatElevationRange(rating.elevation);
-                    if (elevText) {
-                        html += `<div style="font-size: 0.85em;">Elevation: ${elevText}</div>`;
+            dangerRatings
+                .sort((a, b) => DANGER_LEVEL_VALUES[b.mainValue] - DANGER_LEVEL_VALUES[a.mainValue])
+                .forEach((rating: any) => {
+
+                    const level = rating.mainValue;
+                    const icon = getDangerIcon(level);
+
+                    html += `<div style="display: flex; align-items: center; margin-top: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">`;
+
+                    if (icon) {
+                        html += `<img src="${icon}" alt="${level}" style="height: 30px; margin-right: 8px;">`;
                     }
-                }
-                
-                if (rating.validAspects && rating.validAspects.length > 0) {
-                     html += `<div style="margin-top: 2px;">${createAspectSVG(new Set(rating.validAspects), { size: 30 }).outerHTML}</div>`;
-                }
-                
-                html += `</div></div>`;
+
+                    html += `<div>`;
+                    html += `<div><strong>Level: ${level}</strong></div>`;
+
+                    if (rating.elevation) {
+                        const elevText = this.formatElevationRange(rating.elevation);
+                        if (elevText) {
+                            html += `<div style="font-size: 0.85em;">Elevation: ${elevText}</div>`;
+                        }
+                    }
+
+                    if (rating.validAspects && rating.validAspects.length > 0) {
+                         html += `<div style="margin-top: 2px;">${createAspectSVG(new Set(rating.validAspects), { size: 30 }).outerHTML}</div>`;
+                    }
+
+                    html += `</div></div>`;
             });
             html += `</div>`;
         } else if (danger) {
@@ -103,8 +107,7 @@ export class MapPopup {
 
                         // Elevation
                         if (p.elevation) {
-                            let elevText = '';
-                            elevText = this.formatElevationRange(p.elevation);
+                            let elevText = this.formatElevationRange(p.elevation);
 
                             if (elevText) {
                                 html += `<div>Elevation: ${elevText}</div>`;
