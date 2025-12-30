@@ -36,6 +36,7 @@ export class MapComponent {
     private lastAvalancheData: CaamlData | null = null;
     private lastRegionsGeoJSON: any | null = null;
     private popup: MapPopup;
+    private canvas: HTMLCanvasElement | null = null;
 
     // State for dynamic updates
     private currentMode: config.VisualizationMode = config.MODES.BULLETIN;
@@ -44,6 +45,9 @@ export class MapComponent {
     private customAspects: string[] = [];
     private customMinSlope: number = config.DEFAULT_CUSTOM_MIN_SLOPE;
     private isGenerating: boolean = false;
+    
+    // Store current rules for click interaction
+    private currentRules: GenerationRule[] = [];
 
     public getMode(): config.VisualizationMode {
         return this.currentMode;
@@ -66,6 +70,11 @@ export class MapComponent {
             zoom: config.DEFAULT_ZOOM,
         });
 
+        // Create canvas for raster layer
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = 'avalanche-raster-canvas';
+        this.canvas.style.display = 'none';
+
         this.map.on('load', () => {
             console.log('Map loaded');
 
@@ -83,6 +92,9 @@ export class MapComponent {
             this.map!.on('moveend', () => {
                 this.refreshPoints();
             });
+            
+            // Add click listener for raster interaction
+            this.map!.on('click', (e) => this.handleMapClick(e));
 
             this.resolveMapLoaded();
         });
@@ -138,26 +150,24 @@ export class MapComponent {
         if (this.currentMode === config.MODES.CUSTOM) {
             await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
         } else if (this.currentMode === config.MODES.RISK && this.lastAvalancheData && this.lastRegionsGeoJSON) {
-            await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON);
+            await this.renderAvalancheData();
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
-            await this.renderAvalancheData(this.lastAvalancheData, this.lastRegionsGeoJSON, true);
+            await this.renderAvalancheData(true);
         }
     }
 
-    async renderAvalancheData(data: CaamlData, regionsGeoJSON: any, bulletin: boolean = false) {
+    async renderAvalancheData(bulletin: boolean = false) {
         await this.mapLoaded;
-        if (!this.map) return;
+        if (!this.map || !this.lastAvalancheData) return;
 
         this.isGenerating = true;
-        this.lastAvalancheData = data;
-        this.lastRegionsGeoJSON = regionsGeoJSON;
 
-        const elevationBands = processRegionElevations(data);
+        const elevationBands = processRegionElevations(this.lastAvalancheData);
 
         // Map regions by ID for easy lookup
         const regionsMap = new Map<string, any>();
-        if (regionsGeoJSON.features) {
-            regionsGeoJSON.features.forEach((f: any) => {
+        if (this.lastRegionsGeoJSON.features) {
+            this.lastRegionsGeoJSON.features.forEach((f: any) => {
                 regionsMap.set(f.properties.id, f);
             });
         }
@@ -172,9 +182,6 @@ export class MapComponent {
             const color = this.getDangerColor(band.dangerLevel);
             const useAspectANdElevation = this.currentMode === config.MODES.RISK;
 
-            // Handle 'treeline' magic string in elevation data
-            // If we find 'treeline' in the bounds, we use 1800m as the value for the rule generation
-            // but keep the original text in properties for the popup.
             const { min: ruleMinElev, max: ruleMaxElev } = this.adjustElevationForTreeline(
                 band.minElev,
                 band.maxElev,
@@ -186,7 +193,7 @@ export class MapComponent {
                 geometry: regionFeature.geometry,
                 minElev: ruleMinElev,
                 maxElev: ruleMaxElev,
-                minSlope: bulletin ? undefined : 30, // avalanche risk is mostly valid for slopes >= 30°. For bulletins, we are coloring the whole region
+                minSlope: bulletin ? undefined : 30,
                 validAspects: useAspectANdElevation ? band.validAspects : undefined,
                 applySteepnessLogic: useAspectANdElevation,
                 baseSpacing: bulletin ? config.GRID_BASE_SPACING * config.GRID_BULLETIN_SPACING_MULTIPLIER : config.GRID_BASE_SPACING,
@@ -200,11 +207,14 @@ export class MapComponent {
             });
         }
 
-        const pointsFeatures = await this.generatePoints(rules);
-        this.updatePointSource(pointsFeatures);
-        this.addPointLayer();
-        this.addOutlineLayer(regionsGeoJSON);
-        this.setupInteractions();
+        this.currentRules = rules;
+        const rasterData = await this.drawToCanvas(rules);
+        if (rasterData) {
+            this.updateRasterSource(rasterData);
+            this.addRasterLayer();
+        }
+        
+        this.addOutlineLayer(this.lastRegionsGeoJSON);
         this.isGenerating = false;
     }
 
@@ -218,7 +228,6 @@ export class MapComponent {
         this.customAspects = aspects;
         this.customMinSlope = minSlope;
 
-        // Global bounds for Euregio (approximate)
         const bounds = config.EUREGIO_BOUNDS;
 
         const orderedRules: GenerationRule[] = config.STEEPNESS_THRESHOLDS.filter(t => t.minSlope >= minSlope).map(t => ({
@@ -231,11 +240,13 @@ export class MapComponent {
             properties: { steepness: t.label }
         }));
 
-        const pointsFeatures = await this.generatePoints(orderedRules);
-        this.updatePointSource(pointsFeatures);
-        this.addPointLayer();
+        this.currentRules = orderedRules;
+        const rasterData = await this.drawToCanvas(orderedRules);
+        if (rasterData) {
+            this.updateRasterSource(rasterData);
+            this.addRasterLayer();
+        }
 
-        // Remove outlines in custom mode if they exist
         if (this.map.getLayer('regions-outline')) {
             this.map.removeLayer('regions-outline');
         }
@@ -245,31 +256,33 @@ export class MapComponent {
         this.isGenerating = false;
     }
 
-    private updatePointSource(features: any) {
-        if (this.map!.getSource('avalanche-points')) {
-            (this.map!.getSource('avalanche-points') as maptiler.GeoJSONSource).setData(features);
+    private updateRasterSource(data: { coordinates: number[][] }) {
+        const sourceId = 'avalanche-raster-source';
+        const source = this.map!.getSource(sourceId) as any;
+        
+        if (source) {
+            source.setCoordinates(data.coordinates);
+            this.map!.triggerRepaint();
         } else {
-            this.map!.addSource('avalanche-points', {
-                type: 'geojson',
-                data: features
+            this.map!.addSource(sourceId, {
+                type: 'canvas',
+                canvas: this.canvas!,
+                coordinates: data.coordinates,
+                animate: true
             });
         }
     }
 
-    private addPointLayer() {
-        if (!this.map!.getLayer('avalanche-points-layer')) {
+    private addRasterLayer() {
+        if (!this.map!.getLayer('avalanche-raster-layer')) {
             this.map!.addLayer({
-                id: 'avalanche-points-layer',
-                type: 'circle',
-                source: 'avalanche-points',
+                id: 'avalanche-raster-layer',
+                type: 'raster',
+                source: 'avalanche-raster-source',
                 paint: {
-                    'circle-color': ['get', 'color'],
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        ...config.POINT_RADIUS_STOPS.flat()
-                    ],
-                    'circle-opacity': config.POINT_OPACITY,
-                    'circle-pitch-alignment': 'viewport'
+                    'raster-opacity': 0.3,
+                    'raster-fade-duration': 0,
+                    'raster-resampling': 'linear'
                 }
             });
         }
@@ -297,89 +310,144 @@ export class MapComponent {
         }
     }
 
-    private setupInteractions() {
-        // Remove existing listeners to avoid duplicates if called multiple times
-        this.map!.off('click', 'avalanche-points-layer', this.handlePointClick);
-        this.map!.off('mouseenter', 'avalanche-points-layer', this.handleMouseEnter);
-        this.map!.off('mouseleave', 'avalanche-points-layer', this.handleMouseLeave);
+    private handleMapClick(e: any) {
+        const point: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+        
+        const elevation = this.map!.queryTerrainElevation(e.lngLat);
+        if (elevation === null) return;
 
-        this.map!.on('click', 'avalanche-points-layer', this.handlePointClick);
-        this.map!.on('mouseenter', 'avalanche-points-layer', this.handleMouseEnter);
-        this.map!.on('mouseleave', 'avalanche-points-layer', this.handleMouseLeave);
-    }
+        for (const rule of this.currentRules) {
+            if (point[0] < rule.bounds.minLng || point[0] > rule.bounds.maxLng ||
+                point[1] < rule.bounds.minLat || point[1] > rule.bounds.maxLat) {
+                continue;
+            }
 
-    private handlePointClick = (e: any) => {
-        if (e.features && e.features.length > 0) {
-            const feature = e.features[0];
-            this.popup.show(this.map!, e.lngLat, feature.properties);
+            if (rule.geometry) {
+                let isInside = false;
+                if (rule.geometry.type === 'Polygon') {
+                    isInside = isPointInPolygon(point, rule.geometry.coordinates);
+                } else if (rule.geometry.type === 'MultiPolygon') {
+                    isInside = isPointInMultiPolygon(point, rule.geometry.coordinates);
+                }
+                if (!isInside) continue;
+            }
+
+            if (elevation < rule.minElev || elevation > rule.maxElev) continue;
+
+            const getElev = (p: [number, number]) => this.map!.queryTerrainElevation({ lng: p[0], lat: p[1] });
+            
+            let aspect: string | null = null;
+            let slope: number | null = null;
+            
+            const checkAspect = rule.validAspects && rule.validAspects.length > 0;
+            const checkSlope = (rule.minSlope && rule.minSlope > 0) || rule.applySteepnessLogic;
+
+            if (checkAspect || checkSlope) {
+                const metrics = calculateTerrainMetrics(point, getElev);
+                if (!metrics) continue;
+                slope = metrics.slope;
+                aspect = metrics.aspect;
+
+                if (checkSlope) {
+                    if (slope === null || (rule.minSlope && slope < rule.minSlope)) continue;
+                }
+                if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
+                     const level = rule.properties.dangerLevel;
+                     let dlValue = level ? (config.DANGER_LEVEL_VALUES[level] || 0) : 0;
+                     if (dlValue == 0) continue;
+                     if (dlValue > 1) dlValue--;
+                }
+            }
+            
+            this.popup.show(this.map!, e.lngLat, rule.properties);
+            return;
         }
     }
 
-    private handleMouseEnter = () => {
-        this.map!.getCanvas().style.cursor = 'pointer';
-    }
+    private async drawToCanvas(rules: GenerationRule[]): Promise<{ coordinates: number[][] } | null> {
+        if (!this.map || !this.canvas) return null;
 
-    private handleMouseLeave = () => {
-        this.map!.getCanvas().style.cursor = '';
-    }
+        const bounds = this.map.getBounds();
+        const north = bounds.getNorth();
+        const south = bounds.getSouth();
+        const east = bounds.getEast();
+        const west = bounds.getWest();
 
-    private async generatePoints(rules: GenerationRule[]): Promise<any> {
-        const features: any[] = [];
+        const currentZoom = this.map.getZoom();
+        const baseZoom = config.GRID_BASE_ZOOM;
+        let gridSpacingDeg = (rules[0]?.baseSpacing || config.GRID_BASE_SPACING) * Math.pow(config.GRID_DENSITY_FACTOR, baseZoom - currentZoom);
+        gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
+        gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
+
+        const latRange = north - south;
+        const lngRange = east - west;
+        
+        const width = Math.ceil(lngRange / gridSpacingDeg);
+        const height = Math.ceil(latRange / gridSpacingDeg);
+
+        const MAX_DIM = 2000;
+        if (width > MAX_DIM || height > MAX_DIM) {
+             // Could clamp here if needed
+        }
+
+        this.canvas.width = width;
+        this.canvas.height = height;
+        
+        const ctx = this.canvas.getContext('2d');
+        if (!ctx) return null;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        const imgData = ctx.createImageData(width, height);
+        const data = imgData.data;
+
         const elevationCache = new Map<string, number | null>();
-
         const getElevation = (p: [number, number]): number | null => {
             const key = `${p[0]},${p[1]}`;
             if (elevationCache.has(key)) {
                 return elevationCache.get(key)!;
             }
-            const elevation = this.map?.queryTerrainElevation(p) ?? null;
+            const elevation = this.map?.queryTerrainElevation({ lng: p[0], lat: p[1] }) ?? null;
             elevationCache.set(key, elevation);
             return elevation;
         };
 
-        // Dynamic grid spacing based on zoom
-        const currentZoom = this.map!.getZoom();
-        const baseZoom = config.GRID_BASE_ZOOM;
-
-        const mapBounds = this.map!.getBounds();
+        const setPixel = (x: number, y: number, r: number, g: number, b: number) => {
+            const index = (y * width + x) * 4;
+            data[index] = r;
+            data[index + 1] = g;
+            data[index + 2] = b;
+            data[index + 3] = 255; // Fully opaque pixels, controlled by layer opacity
+        };
 
         for (const rule of rules) {
-            const baseSpacing = rule.baseSpacing || config.GRID_BASE_SPACING;
-            // Formula: spacing decreases as zoom increases (density increases)
-            let gridSpacingDeg = baseSpacing * Math.pow(config.GRID_DENSITY_FACTOR, baseZoom - currentZoom);
+             const rNorth = Math.min(north, rule.bounds.maxLat);
+             const rSouth = Math.max(south, rule.bounds.minLat);
+             const rEast = Math.min(east, rule.bounds.maxLng);
+             const rWest = Math.max(west, rule.bounds.minLng);
 
-            // Clamp spacing to avoid performance issues
-            gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
-            gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
+             if (rNorth <= rSouth || rEast <= rWest) continue;
 
-            const mapCenter = this.map!.getCenter();
+             const startX = Math.floor((rWest - west) / gridSpacingDeg);
+             const endX = Math.ceil((rEast - west) / gridSpacingDeg);
+             const startY = Math.floor((north - rNorth) / gridSpacingDeg);
+             const endY = Math.ceil((north - rSouth) / gridSpacingDeg);
 
-            // Apply strict limit only when in 3D (pitched) and zoomed in
-            // This prevents performance issues when looking at the horizon in 3D
-            const is3DHighZoom = this.map!.getPitch() > 0 && currentZoom > config.ZOOM_THRESHOLD_MODE_SWITCH;
+             const sX = Math.max(0, startX);
+             const eX = Math.min(width, endX);
+             const sY = Math.max(0, startY);
+             const eY = Math.min(height, endY);
 
-            let minLng = Math.max(rule.bounds.minLng, mapBounds.getWest());
-            let maxLng = Math.min(rule.bounds.maxLng, mapBounds.getEast());
-            let minLat = Math.max(rule.bounds.minLat, mapBounds.getSouth());
-            let maxLat = Math.min(rule.bounds.maxLat, mapBounds.getNorth());
+             const rgb = this.hexToRgb(rule.color);
+             if (!rgb) continue;
 
-            if (is3DHighZoom) {
-                minLng = Math.max(minLng, mapCenter.lng - config.MAX_RENDER_DIST_DEG);
-                maxLng = Math.min(maxLng, mapCenter.lng + config.MAX_RENDER_DIST_DEG);
-                minLat = Math.max(minLat, mapCenter.lat - config.MAX_RENDER_DIST_DEG);
-                maxLat = Math.min(maxLat, mapCenter.lat + config.MAX_RENDER_DIST_DEG);
-            }
+             for (let x = sX; x < eX; x++) {
+                 for (let y = sY; y < eY; y++) {
+                     const lng = west + (x + 0.5) * gridSpacingDeg;
+                     const lat = north - (y + 0.5) * gridSpacingDeg;
+                     const point: [number, number] = [lng, lat];
 
-            // Skip if rule region is not visible
-            if (minLng > maxLng || minLat > maxLat) continue;
-
-            // Generate grid points
-            for (let lng = minLng; lng <= maxLng; lng += gridSpacingDeg) {
-                for (let lat = minLat; lat <= maxLat; lat += gridSpacingDeg) {
-                    const point: [number, number] = [lng, lat];
-
-                    // 1. Check if point is inside region polygon (if geometry exists)
-                    if (rule.geometry) {
+                     if (rule.geometry) {
                         let isInside = false;
                         if (rule.geometry.type === 'Polygon') {
                             isInside = isPointInPolygon(point, rule.geometry.coordinates);
@@ -389,7 +457,6 @@ export class MapComponent {
                         if (!isInside) continue;
                     }
 
-                    // 2. Check elevation
                     const elevation = getElevation(point);
 
                     if (elevation !== null && elevation !== undefined) {
@@ -397,7 +464,7 @@ export class MapComponent {
                             let aspect: string | null = null;
                             let slope: number | null = null;
 
-                            const level = rule.properties.dangerLevel; // e.g. "considerable", "high"
+                            const level = rule.properties.dangerLevel;
                             let dlValue = level ? (config.DANGER_LEVEL_VALUES[level] || 0) : 0;
 
                             const checkAspect = rule.validAspects && rule.validAspects.length > 0;
@@ -405,7 +472,7 @@ export class MapComponent {
 
                             if (checkAspect || checkSlope) {
                                 const metrics = calculateTerrainMetrics(point, getElevation);
-                                if (!metrics) continue; // Missing data for slope/aspect
+                                if (!metrics) continue;
 
                                 slope = metrics.slope;
                                 if (checkSlope) {
@@ -414,7 +481,6 @@ export class MapComponent {
                                     }
                                 }
 
-                                // For favourable aspects we use a common heuristic to reduce the danger level by 1
                                 aspect = metrics.aspect;
                                 if (checkAspect && (!aspect || !rule.validAspects!.includes(aspect))) {
                                     if (dlValue == 0) continue;
@@ -423,66 +489,55 @@ export class MapComponent {
                             }
 
                             let finalColor = rule.color;
+                            let finalRgb = rgb;
 
                             if (rule.applySteepnessLogic && slope !== null) {
-                                // Logic:
-                                // Level 4+ (High+): >30 Red, else Orange
-                                // Level 3 (Considerable): >35 Red, >30 Orange
-                                // Level 2 (Moderate): >40 Red, >35 Orange
-                                // Level 1 (Low): >40 Orange
-
                                 if (dlValue >= 4) {
-                                    if (slope > 30) finalColor = config.DANGER_COLORS['high']; // Red
-                                    else finalColor = config.DANGER_COLORS['considerable']; // Orange
+                                    if (slope > 30) finalColor = config.DANGER_COLORS['high'];
+                                    else finalColor = config.DANGER_COLORS['considerable'];
                                 } else if (dlValue === 3) {
-                                    if (slope > 35) {
-                                        finalColor = config.DANGER_COLORS['high']; // Red
-                                    } else if (slope > 30) {
-                                        finalColor = config.DANGER_COLORS['considerable']; // Orange
-                                    } else {
-                                        continue;
-                                    }
+                                    if (slope > 35) finalColor = config.DANGER_COLORS['high'];
+                                    else if (slope > 30) finalColor = config.DANGER_COLORS['considerable'];
+                                    else continue;
                                 } else if (dlValue === 2) {
-                                    if (slope > 40) {
-                                        finalColor = config.DANGER_COLORS['high']; // Red
-                                    } else if (slope > 35) {
-                                        finalColor = config.DANGER_COLORS['considerable']; // Orange
-                                    } else {
-                                        continue;
-                                    }
+                                    if (slope > 40) finalColor = config.DANGER_COLORS['high'];
+                                    else if (slope > 35) finalColor = config.DANGER_COLORS['considerable'];
+                                    else continue;
                                 } else if (dlValue === 1) {
-                                    if (slope > 40) {
-                                        finalColor = config.DANGER_COLORS['considerable']; // Orange
-                                    } else {
-                                        continue;
-                                    }
+                                    if (slope > 40) finalColor = config.DANGER_COLORS['considerable'];
+                                    else continue;
                                 }
+                                const c = this.hexToRgb(finalColor);
+                                if (c) finalRgb = c;
                             }
 
-                            features.push({
-                                type: 'Feature',
-                                geometry: {
-                                    type: 'Point',
-                                    coordinates: point
-                                },
-                                properties: {
-                                    ...rule.properties,
-                                    color: finalColor,
-                                    elevation: elevation,
-                                    aspect: aspect,
-                                    slope: slope
-                                }
-                            });
+                            setPixel(x, y, finalRgb.r, finalRgb.g, finalRgb.b);
                         }
                     }
-                }
-            }
+                 }
+             }
         }
 
+        ctx.putImageData(imgData, 0, 0);
+
+        // Return coordinates that match the generated grid
         return {
-            type: 'FeatureCollection',
-            features: features
+            coordinates: [
+                [west, north],
+                [west + width * gridSpacingDeg, north],
+                [west + width * gridSpacingDeg, north - height * gridSpacingDeg],
+                [west, north - height * gridSpacingDeg]
+            ]
         };
+    }
+
+    private hexToRgb(hex: string): { r: number, g: number, b: number } | null {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
     }
 
     private adjustElevationForTreeline(currentMin: number, currentMax: number, problems: AvalancheProblem[]): { min: number, max: number } {
