@@ -1,13 +1,13 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
-import type { CaamlData, AvalancheProblem } from '../types/avalanche';
-import { processRegionElevations } from '../utils/data-processing';
+import type {AvalancheProblem, CaamlData} from '../types/avalanche';
+import {processRegionElevations} from '../utils/data-processing';
 import * as config from '../config';
-import { ApiService } from '../services/api';
+import {ApiService} from '../services/api';
 
-import { isPointInPolygon, isPointInMultiPolygon, getBounds } from '../utils/geometry';
-import { calculateTerrainMetrics } from '../utils/geo-utils';
-import { MapPopup } from './MapPopup';
+import {getBounds, isPointInMultiPolygon, isPointInPolygon} from '../utils/geometry';
+import {calculateTerrainMetrics} from '../utils/geo-utils';
+import {MapPopup} from './MapPopup';
 
 interface GenerationRule {
     bounds: { minLng: number, maxLng: number, minLat: number, maxLat: number };
@@ -17,7 +17,6 @@ interface GenerationRule {
     minSlope?: number;
     applySteepnessLogic?: boolean;
     validAspects?: string[];
-    baseSpacing?: number;
     color: string;
     properties: {
         regionId?: string;
@@ -45,9 +44,6 @@ export class MapComponent {
     private customAspects: string[] = [];
     private customMinSlope: number = config.DEFAULT_CUSTOM_MIN_SLOPE;
     private isGenerating: boolean = false;
-    
-    // Store current rules for click interaction
-    private currentRules: GenerationRule[] = [];
 
     public getMode(): config.VisualizationMode {
         return this.currentMode;
@@ -92,7 +88,7 @@ export class MapComponent {
             this.map!.on('moveend', () => {
                 this.refreshPoints();
             });
-            
+
             // Add click listener for raster interaction
             this.map!.on('click', (e) => this.handleMapClick(e));
 
@@ -182,7 +178,7 @@ export class MapComponent {
             const color = this.getDangerColor(band.dangerLevel);
             const useAspectANdElevation = this.currentMode === config.MODES.RISK;
 
-            const { min: ruleMinElev, max: ruleMaxElev } = this.adjustElevationForTreeline(
+            const {min: ruleMinElev, max: ruleMaxElev} = this.adjustElevationForTreeline(
                 band.minElev,
                 band.maxElev,
                 band.avalancheProblems
@@ -196,7 +192,6 @@ export class MapComponent {
                 minSlope: bulletin ? undefined : 30,
                 validAspects: useAspectANdElevation ? band.validAspects : undefined,
                 applySteepnessLogic: useAspectANdElevation,
-                baseSpacing: bulletin ? config.GRID_BASE_SPACING * config.GRID_BULLETIN_SPACING_MULTIPLIER : config.GRID_BASE_SPACING,
                 color: color,
                 properties: {
                     regionId: band.regionID,
@@ -207,13 +202,12 @@ export class MapComponent {
             });
         }
 
-        this.currentRules = rules;
         const rasterData = await this.drawToCanvas(rules);
         if (rasterData) {
             this.updateRasterSource(rasterData);
             this.addRasterLayer();
         }
-        
+
         this.addOutlineLayer(this.lastRegionsGeoJSON);
         this.isGenerating = false;
     }
@@ -237,10 +231,9 @@ export class MapComponent {
             minSlope: t.minSlope,
             validAspects: aspects,
             color: t.color,
-            properties: { steepness: t.label }
+            properties: {steepness: t.label}
         }));
 
-        this.currentRules = orderedRules;
         const rasterData = await this.drawToCanvas(orderedRules);
         if (rasterData) {
             this.updateRasterSource(rasterData);
@@ -371,15 +364,11 @@ export class MapComponent {
         const east = bounds.getEast();
         const west = bounds.getWest();
 
-        const currentZoom = this.map.getZoom();
-        const baseZoom = config.GRID_BASE_ZOOM;
-        let gridSpacingDeg = (rules[0]?.baseSpacing || config.GRID_BASE_SPACING) * Math.pow(config.GRID_DENSITY_FACTOR, baseZoom - currentZoom);
-        gridSpacingDeg = Math.max(gridSpacingDeg, config.GRID_MIN_SPACING);
-        gridSpacingDeg = Math.min(gridSpacingDeg, config.GRID_MAX_SPACING);
-
         const latRange = north - south;
         const lngRange = east - west;
-        
+
+        const gridSpacingDeg = Math.max(latRange, lngRange) / config.GRID_POINTS_DENSITY;
+
         const width = Math.ceil(lngRange / gridSpacingDeg);
         const height = Math.ceil(latRange / gridSpacingDeg);
 
