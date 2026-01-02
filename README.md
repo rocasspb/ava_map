@@ -7,13 +7,12 @@ A tool to assess avalanche terrain, based on the slope parameters and regional a
 
 ## Features
 - **Avalanche Bulletin Mode**: Fetches and displays real-time avalanche danger levels from official bulletins
-- **Risk Mode**: Highlights risky terrain, as per the regional avalanche bulletin, based on the following parameters of the relevant problems(see the matrix below):
+- **Risk Mode**: Highlights risky terrain, as per the regional avalanche bulletin, based on the following parameters of the relevant problems(see the matrix in the popup):
   - Danger level
   - Elevation range
   - Aspect
   - Steepness
 
-![Matrix](src/docs/img/matrix.png)
 - **Custom Mode**: Interactive tools to filter terrain based on:
   - Elevation range (min/max)
   - Slope angle(>30°, >35°, >40°)

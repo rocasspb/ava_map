@@ -604,38 +604,33 @@ button:hover {
   #controls-toggle {
     display: block;
   }
-}
 
-/* Open State */
-#controls.open {
-  transform: translateY(0);
-}
+  /* Open State */
+  #controls.open {
+    transform: translateY(0);
+  }
 
-#mobile-mode-toggle {
-  display: flex;
-  bottom: 20px;
-  left: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 28px;
-  font-size: 24px;
-  background-color: white;
-  color: #333;
-  right: auto;
-  /* Reset regular floating btn right positioning*/
-}
+  #mobile-mode-toggle {
+    display: flex;
+    bottom: 20px;
+    left: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    font-size: 24px;
+    background-color: white;
+    color: #333;
+    right: auto;
+    /* Reset regular floating btn right positioning*/
+  }
 
-#mobile-mode-toggle .material-symbols-outlined {
-  font-size: 24px;
-}
+  #mobile-mode-toggle .material-symbols-outlined {
+    font-size: 24px;
+  }
 
-/* Collapsed state logic removed */
-}
-
-
-.mobile-only {
-  display: flex !important;
-}
+  .mobile-only {
+    display: flex !important;
+  }
 }
 
 /* Desktop: hide mobile-only elements */
