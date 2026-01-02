@@ -90,7 +90,7 @@ html {
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 0px;
 }
 
 .mode-card.sidebar-card {
@@ -261,6 +261,10 @@ html {
 
 #custom-controls.hidden {
   display: none;
+}
+
+#custom-controls {
+  margin-top: 15px;
 }
 
 button {
@@ -529,17 +533,29 @@ button:hover {
 #controls-toggle {
   display: none;
   width: 100%;
-  text-align: center;
-  padding: 5px 0;
+  text-align: right;
+  padding: 10px 20px 0 0;
   cursor: pointer;
   color: #888;
   margin-bottom: 5px;
+  box-sizing: border-box;
 }
 
-#controls-toggle .toggle-icon {
-  display: inline-block;
-  transition: transform 0.3s ease;
+#controls-toggle .material-symbols-outlined {
+  font-size: 20px;
+  color: #555;
 }
+
+/* Toggle visibility logic */
+#controls:not(.collapsed) .toggle-icon-closed {
+  display: none;
+}
+
+#controls.collapsed .toggle-icon-open {
+  display: none;
+}
+
+
 
 /* Risk Controls */
 #risk-controls {
@@ -572,38 +588,67 @@ button:hover {
     bottom: 0;
     left: 0;
     top: auto;
-    /* Override top: 20px */
+    /* Initially hidden on mobile */
+    transform: translateY(110%);
     width: 100%;
     max-width: none;
     box-sizing: border-box;
     border-radius: 16px 16px 0 0;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 2000;
     max-height: 80vh;
     overflow-y: auto;
   }
 
-  /* Collapsed State */
-  #controls.collapsed {
-    transform: translateY(calc(100% - 50px));
-    /* Keep header visible */
-  }
-
-  #controls.collapsed #controls-toggle .toggle-icon {
-    transform: rotate(180deg);
-  }
-
   #controls-toggle {
     display: block;
-    /* Show handle on mobile */
+  }
+}
+
+/* Open State */
+#controls.open {
+  transform: translateY(0);
+}
+
+#mobile-mode-toggle {
+  display: flex;
+  bottom: 20px;
+  left: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  font-size: 24px;
+  background-color: white;
+  color: #333;
+  right: auto;
+  /* Reset regular floating btn right positioning*/
+}
+
+#mobile-mode-toggle .material-symbols-outlined {
+  font-size: 24px;
+}
+
+/* Collapsed state logic removed */
+}
+
+
+.mobile-only {
+  display: flex !important;
+}
+}
+
+/* Desktop: hide mobile-only elements */
+@media (min-width: 601px) {
+  .mobile-only {
+    display: none !important;
   }
 }
 
 /* Floating 3D Toggle Button */
 .floating-btn {
   position: absolute;
-  right: 5px;
+  right: 20px;
   width: 30px;
   height: 30px;
   border-radius: 50%;

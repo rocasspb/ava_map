@@ -51,6 +51,18 @@ const initApp = async () => {
 
       updateModeUI(mode);
       AnalyticsService.trackEvent('select_mode', { mode });
+
+      // Update mobile toggle icon
+      const mobileModeToggle = document.getElementById('mobile-mode-toggle');
+      if (mobileModeToggle) {
+        const iconSpan = mobileModeToggle.querySelector('span');
+        if (iconSpan) {
+          let iconName = 'nearby'; // default bulletin
+          if (mode === config.MODES.RISK) iconName = 'landscape';
+          if (mode === config.MODES.CUSTOM) iconName = 'tune';
+          iconSpan.textContent = iconName;
+        }
+      }
     };
 
     // Mode Card Click Handlers
@@ -104,13 +116,20 @@ const initApp = async () => {
       aspectSelector.setOnChange(() => updateCustomMode());
     }
 
-    // Mobile Drawer Toggle
-    const controlsToggle = document.getElementById('controls-toggle');
+    // Mobile Drawer Logic
+    const controlsToggle = document.getElementById('controls-toggle'); // Close button (X)
+    const mobileModeToggle = document.getElementById('mobile-mode-toggle'); // Floating button
     const controls = document.getElementById('controls');
 
-    if (controlsToggle && controls) {
+    if (controls && mobileModeToggle && controlsToggle) {
+      // Open drawer
+      mobileModeToggle.addEventListener('click', () => {
+        controls.classList.add('open');
+      });
+
+      // Close drawer
       controlsToggle.addEventListener('click', () => {
-        controls.classList.toggle('collapsed');
+        controls.classList.remove('open');
       });
     }
 
