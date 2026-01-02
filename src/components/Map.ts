@@ -1,15 +1,15 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
-import type {CaamlData} from '../types/avalanche';
-import {processRegionElevations} from '../utils/data-processing';
+import type { CaamlData } from '../types/avalanche';
+import { processRegionElevations } from '../utils/data-processing';
 import * as config from '../config';
-import {ApiService} from '../services/api';
+import { ApiService } from '../services/api';
 
-import {getBounds, isPointInMultiPolygon, isPointInPolygon} from '../utils/geometry';
-import {calculateTerrainMetrics} from '../utils/geo-utils';
-import {MapPopup} from './MapPopup';
-import {hexToRgb, adjustElevationForTreeline, getDangerColor} from '../utils/map-helpers';
-import type {GenerationRule} from '../types/GenerationRule';
+import { getBounds, isPointInMultiPolygon, isPointInPolygon } from '../utils/geometry';
+import { calculateTerrainMetrics } from '../utils/geo-utils';
+import { MapPopup } from './MapPopup';
+import { hexToRgb, adjustElevationForTreeline, getDangerColor } from '../utils/map-helpers';
+import type { GenerationRule } from '../types/GenerationRule';
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
@@ -162,7 +162,7 @@ export class MapComponent {
             const color = getDangerColor(band.dangerLevel);
             const useAspectANdElevation = this.currentMode === config.MODES.RISK;
 
-            const {min: ruleMinElev, max: ruleMaxElev} = adjustElevationForTreeline(
+            const { min: ruleMinElev, max: ruleMaxElev } = adjustElevationForTreeline(
                 band.minElev,
                 band.maxElev,
                 band.avalancheProblems
@@ -215,7 +215,7 @@ export class MapComponent {
             minSlope: t.minSlope,
             validAspects: aspects,
             color: t.color,
-            properties: {steepness: t.label}
+            properties: { steepness: t.label }
         }));
 
         const rasterData = await this.drawToCanvas(orderedRules);
@@ -236,7 +236,7 @@ export class MapComponent {
     private updateRasterSource(data: { coordinates: [[number, number], [number, number], [number, number], [number, number]] }) {
         const sourceId = 'avalanche-raster-source';
         const source = this.map!.getSource(sourceId) as any;
-        
+
         if (source) {
             source.setCoordinates(data.coordinates);
             this.map!.triggerRepaint();
@@ -298,7 +298,7 @@ export class MapComponent {
                 } else if (feature.geometry.type === 'MultiPolygon') {
                     isInside = isPointInMultiPolygon(point, feature.geometry.coordinates);
                 }
-                
+
                 if (isInside) {
                     clickedRegionId = feature.properties.id;
                     break;
@@ -308,7 +308,7 @@ export class MapComponent {
 
         if (!clickedRegionId) return;
         if (this.lastAvalancheData && this.lastAvalancheData.bulletins) {
-            const bulletin = this.lastAvalancheData.bulletins.find(b => 
+            const bulletin = this.lastAvalancheData.bulletins.find(b =>
                 b.regions.some(r => r.regionID.startsWith(clickedRegionId))
             );
 
@@ -353,17 +353,17 @@ export class MapComponent {
 
         const MAX_DIM = 2000;
         if (width > MAX_DIM || height > MAX_DIM) {
-             // Could clamp here if needed
+            // Could clamp here if needed
         }
 
         this.canvas.width = width;
         this.canvas.height = height;
-        
+
         const ctx = this.canvas.getContext('2d');
         if (!ctx) return null;
-        
+
         ctx.clearRect(0, 0, width, height);
-        
+
         const imgData = ctx.createImageData(width, height);
         const data = imgData.data;
 
@@ -387,33 +387,33 @@ export class MapComponent {
         };
 
         for (const rule of rules) {
-             const rNorth = Math.min(north, rule.bounds.maxLat);
-             const rSouth = Math.max(south, rule.bounds.minLat);
-             const rEast = Math.min(east, rule.bounds.maxLng);
-             const rWest = Math.max(west, rule.bounds.minLng);
+            const rNorth = Math.min(north, rule.bounds.maxLat);
+            const rSouth = Math.max(south, rule.bounds.minLat);
+            const rEast = Math.min(east, rule.bounds.maxLng);
+            const rWest = Math.max(west, rule.bounds.minLng);
 
-             if (rNorth <= rSouth || rEast <= rWest) continue;
+            if (rNorth <= rSouth || rEast <= rWest) continue;
 
-             const startX = Math.floor((rWest - west) / gridSpacingDeg);
-             const endX = Math.ceil((rEast - west) / gridSpacingDeg);
-             const startY = Math.floor((north - rNorth) / gridSpacingDeg);
-             const endY = Math.ceil((north - rSouth) / gridSpacingDeg);
+            const startX = Math.floor((rWest - west) / gridSpacingDeg);
+            const endX = Math.ceil((rEast - west) / gridSpacingDeg);
+            const startY = Math.floor((north - rNorth) / gridSpacingDeg);
+            const endY = Math.ceil((north - rSouth) / gridSpacingDeg);
 
-             const sX = Math.max(0, startX);
-             const eX = Math.min(width, endX);
-             const sY = Math.max(0, startY);
-             const eY = Math.min(height, endY);
+            const sX = Math.max(0, startX);
+            const eX = Math.min(width, endX);
+            const sY = Math.max(0, startY);
+            const eY = Math.min(height, endY);
 
-             const rgb = hexToRgb(rule.color);
-             if (!rgb) continue;
+            const rgb = hexToRgb(rule.color);
+            if (!rgb) continue;
 
-             for (let x = sX; x < eX; x++) {
-                 for (let y = sY; y < eY; y++) {
-                     const lng = west + (x + 0.5) * gridSpacingDeg;
-                     const lat = north - (y + 0.5) * gridSpacingDeg;
-                     const point: [number, number] = [lng, lat];
+            for (let x = sX; x < eX; x++) {
+                for (let y = sY; y < eY; y++) {
+                    const lng = west + (x + 0.5) * gridSpacingDeg;
+                    const lat = north - (y + 0.5) * gridSpacingDeg;
+                    const point: [number, number] = [lng, lat];
 
-                     if (rule.geometry) {
+                    if (rule.geometry) {
                         let isInside = false;
                         if (rule.geometry.type === 'Polygon') {
                             isInside = isPointInPolygon(point, rule.geometry.coordinates);
@@ -480,8 +480,8 @@ export class MapComponent {
                             setPixel(x, y, finalRgb.r, finalRgb.g, finalRgb.b);
                         }
                     }
-                 }
-             }
+                }
+            }
         }
 
         ctx.putImageData(imgData, 0, 0);

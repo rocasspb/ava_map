@@ -72,7 +72,7 @@ export const OUTLINE_WIDTH = 0;
 export const OUTLINE_OPACITY = 0.3;
 
 // Grid
-export const GRID_POINTS_DENSITY = 200;
+export const GRID_POINTS_DENSITY = 160;
 
 // Bounds
 // Approximate bounds for Euregio

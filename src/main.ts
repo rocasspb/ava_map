@@ -22,35 +22,49 @@ const initApp = async () => {
     await mapComponent.initMap();
 
     // UI Controls
-    const modeToggleContainer = document.querySelector('.mode-toggle');
-    if (modeToggleContainer) {
-      modeToggleContainer.innerHTML = '';
-      modeToggleContainer.innerHTML = '';
-      modeToggleContainer.classList.add('segmented-control');
-
-      Object.values(config.MODES).forEach(mode => {
-        const inputId = `mode-${mode}`;
-
-        const input = document.createElement('input');
-        input.type = 'radio';
-        input.name = 'mode';
-        input.id = inputId;
-        input.value = mode;
-        if (mode === config.MODES.BULLETIN) input.checked = true;
-
-        if (config.DEFAULT_ZOOM < config.ZOOM_THRESHOLD_MODE_SWITCH && mode !== config.MODES.BULLETIN) {
-          input.disabled = true;
-          modeToggleContainer.classList.add('disabled-label');
+    const updateModeUI = (mode: config.VisualizationMode) => {
+      // Update Selection State
+      document.querySelectorAll('.mode-card').forEach(card => {
+        card.classList.remove('selected');
+        if ((card as HTMLElement).dataset.mode === mode) {
+          card.classList.add('selected');
         }
-
-        const label = document.createElement('label');
-        label.htmlFor = inputId;
-        label.textContent = config.MODE_LABELS[mode];
-
-        modeToggleContainer.appendChild(input);
-        modeToggleContainer.appendChild(label);
       });
-    }
+    };
+
+    const handleModeChange = (mode: config.VisualizationMode) => {
+      // Update Map Mode
+      if (mode === config.MODES.CUSTOM) {
+        customControls?.classList.remove('hidden');
+        riskControls?.classList.add('hidden');
+        updateCustomMode();
+        mapComponent.setMode(config.MODES.CUSTOM);
+      } else if (mode === config.MODES.RISK) {
+        customControls?.classList.add('hidden');
+        riskControls?.classList.remove('hidden');
+        mapComponent.setMode(config.MODES.RISK);
+      } else {
+        customControls?.classList.add('hidden');
+        riskControls?.classList.add('hidden');
+        mapComponent.setMode(config.MODES.BULLETIN);
+      }
+
+      updateModeUI(mode);
+      AnalyticsService.trackEvent('select_mode', { mode });
+    };
+
+    // Mode Card Click Handlers
+    document.querySelectorAll('.mode-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        if (target.hasAttribute('disabled')) return;
+
+        const mode = target.dataset.mode as config.VisualizationMode;
+        if (Object.values(config.MODES).includes(mode)) {
+          handleModeChange(mode);
+        }
+      });
+    });
 
     const customControls = document.getElementById('custom-controls');
     const riskControls = document.getElementById('risk-controls');
@@ -90,29 +104,6 @@ const initApp = async () => {
       aspectSelector.setOnChange(() => updateCustomMode());
     }
 
-    const modeRadios = document.querySelectorAll('input[name="mode"]');
-    modeRadios.forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        const mode = (e.target as HTMLInputElement).value;
-
-        if (mode === config.MODES.CUSTOM) {
-          customControls?.classList.remove('hidden');
-          riskControls?.classList.add('hidden');
-          updateCustomMode();
-          mapComponent.setMode(config.MODES.CUSTOM);
-        } else if (mode === config.MODES.RISK) {
-          customControls?.classList.add('hidden');
-          riskControls?.classList.remove('hidden');
-          mapComponent.setMode(config.MODES.RISK);
-        } else {
-          customControls?.classList.add('hidden');
-          riskControls?.classList.add('hidden');
-          mapComponent.setMode(config.MODES.BULLETIN);
-        }
-        AnalyticsService.trackEvent('select_mode', { mode });
-      });
-    });
-
     // Mobile Drawer Toggle
     const controlsToggle = document.getElementById('controls-toggle');
     const controls = document.getElementById('controls');
@@ -144,6 +135,7 @@ const initApp = async () => {
     // Initial tracking
     AnalyticsService.trackEvent('page_view');
     AnalyticsService.trackEvent('select_mode', { mode: config.MODES.BULLETIN });
+    updateModeUI(config.MODES.BULLETIN);
 
     // Zoom-dependent logic
     const map = mapComponent.getMap();
@@ -153,48 +145,47 @@ const initApp = async () => {
       const handleZoomChange = () => {
         const zoom = map.getZoom();
         const isLowZoom = zoom < config.ZOOM_THRESHOLD_MODE_SWITCH;
-        const modeRadios = document.querySelectorAll('input[name="mode"]') as NodeListOf<HTMLInputElement>;
+        const modeCards = document.querySelectorAll('.mode-card');
 
         if (isLowZoom) {
           if (mapComponent.getMode() === config.MODES.BULLETIN) {
+            // Ensure UI lock is visual
+            modeCards.forEach(card => {
+              const mode = (card as HTMLElement).dataset.mode;
+              if (mode !== config.MODES.BULLETIN) {
+                card.setAttribute('disabled', 'true');
+              }
+            });
             return
           }
           console.log(`Low Zoom (<${config.ZOOM_THRESHOLD_MODE_SWITCH}): Forcing Bulletin Mode`);
 
-          modeRadios.forEach(r => {
-            if (r.value === config.MODES.BULLETIN) {
-              r.checked = true;
-              r.dispatchEvent(new Event('change'));
-            } else {
-              r.disabled = true;
-              r.parentElement?.classList.add('disabled-label');
+          handleModeChange(config.MODES.BULLETIN);
+
+          modeCards.forEach(card => {
+            const mode = (card as HTMLElement).dataset.mode;
+            if (mode !== config.MODES.BULLETIN) {
+              card.setAttribute('disabled', 'true');
             }
           });
+
         } else {
           // High Zoom
-
           // Unlock Controls
-          modeRadios.forEach(r => {
-            r.disabled = false;
-            r.parentElement?.classList.remove('disabled-label');
+          modeCards.forEach(card => {
+            card.removeAttribute('disabled');
           });
 
           // Transition Logic: If coming from low zoom, enable Aspect and Steepness
           if (wasLowZoom) {
             console.log('Transition to High Zoom: Switching to Risk Mode');
-            modeRadios.forEach(r => {
-              if (r.value === config.MODES.RISK) {
-                r.checked = true;
-                r.dispatchEvent(new Event('change'));
-              }
-            });
+            handleModeChange(config.MODES.RISK);
           }
         }
         wasLowZoom = isLowZoom;
       };
 
-      // Run once on init (wait a tick for map to be ready-ready if needed, but synchronous should work for initial state if zoom is set)
-      // Actually map load might be async for zoom? Config default is 8. So it starts < 10.
+      // Run once on init
       handleZoomChange();
 
       map.on('zoomend', handleZoomChange);
