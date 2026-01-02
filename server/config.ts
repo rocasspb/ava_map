@@ -33,4 +33,4 @@ export const REGION_GEOJSON_URLS = [
     'https://regions.avalanches.org/micro-regions/IT-57_micro-regions.geojson.json',
 ];
 
-export const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+export const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
