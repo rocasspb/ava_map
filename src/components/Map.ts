@@ -11,6 +11,8 @@ import { MapPopup } from './MapPopup';
 import { hexToRgb, adjustElevationForTreeline, getDangerColor } from '../utils/map-helpers';
 import type { GenerationRule } from '../types/GenerationRule';
 
+import { TerrainProvider } from '../services/TerrainProvider';
+
 export class MapComponent {
     private map: maptiler.Map | null = null;
     private containerId: string;
@@ -20,6 +22,7 @@ export class MapComponent {
     private lastRegionsGeoJSON: any | null = null;
     private popup: MapPopup;
     private canvas: HTMLCanvasElement | null = null;
+    private terrainProvider: TerrainProvider;
 
     // State for dynamic updates
     private currentMode: config.VisualizationMode = config.MODES.BULLETIN;
@@ -40,6 +43,7 @@ export class MapComponent {
             this.resolveMapLoaded = resolve;
         });
         this.popup = new MapPopup();
+        this.terrainProvider = new TerrainProvider(maptiler.config.apiKey);
     }
 
     async initMap() {
@@ -367,16 +371,22 @@ export class MapComponent {
         const imgData = ctx.createImageData(width, height);
         const data = imgData.data;
 
-        const elevationCache = new Map<string, number | null>();
+        // --- Fetch Tiles via Provider ---
+        try {
+            await this.terrainProvider.fetchTiles(
+                { west, south, east, north },
+                this.map.getZoom()
+            );
+        } catch (e) {
+            console.error("Failed to fetch terrain tiles", e);
+            return null;
+        }
+
         const getElevation = (p: [number, number]): number | null => {
-            const key = `${p[0]},${p[1]}`;
-            if (elevationCache.has(key)) {
-                return elevationCache.get(key)!;
-            }
-            const elevation = this.map?.queryTerrainElevation({ lng: p[0], lat: p[1] }) ?? null;
-            elevationCache.set(key, elevation);
-            return elevation;
+            return this.terrainProvider.getElevation(p[0], p[1]);
         };
+        // ---------------------------
+        // ---------------------------
 
         const setPixel = (x: number, y: number, r: number, g: number, b: number) => {
             const index = (y * width + x) * 4;
