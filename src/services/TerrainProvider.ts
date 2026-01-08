@@ -1,4 +1,3 @@
-import * as maptiler from '@maptiler/sdk';
 import { TERRAIN_RGB_BASE_URL } from '../config';
 
 export class TerrainProvider {
