@@ -175,6 +175,7 @@ export class ElevationSlider {
         });
 
         document.addEventListener('mouseup', () => {
+            if(!this.isDraggingMin && !this.isDraggingMax) return;
             this.isDraggingMin = false;
             this.isDraggingMax = false;
             if (this.onChange) this.onChange(this.minSelect, this.maxSelect);

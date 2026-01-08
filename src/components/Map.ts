@@ -12,6 +12,7 @@ import { hexToRgb, adjustElevationForTreeline, getDangerColor } from '../utils/m
 import type { GenerationRule } from '../types/GenerationRule';
 
 import { TerrainProvider } from '../services/TerrainProvider';
+import {DANGER_LEVEL_VALUES} from "../config";
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
@@ -189,6 +190,12 @@ export class MapComponent {
                 }
             });
         }
+
+        rules.sort((a, b) => {
+            const levelA = a.properties.dangerLevel ? DANGER_LEVEL_VALUES[a.properties.dangerLevel] || 0 : 0;
+            const levelB = b.properties.dangerLevel ? DANGER_LEVEL_VALUES[b.properties.dangerLevel] || 0 : 0;
+            return levelA - levelB;
+        });
 
         const rasterData = await this.drawToCanvas(rules);
         if (rasterData) {
