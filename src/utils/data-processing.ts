@@ -1,5 +1,5 @@
 import type { CaamlData, DangerRating, AvalancheProblem } from '../types/avalanche';
-import { DEFAULT_MAX_ELEVATION, DANGER_LEVEL_VALUES } from '../config';
+import { DEFAULT_MAX_ELEVATION, DANGER_LEVEL_VALUES, TREELINE_ELEVATION } from '../config';
 
 export interface RegionDanger {
     regionID: string;
@@ -83,12 +83,12 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
 
                 // Let's look at the DangerRatings first as they directly correlate to the color.
                 bulletin.dangerRatings.forEach(rating => {
-                    var { min: rMin, max: rMax } = parseElevation(rating.elevation);
+                    var { min: rMin, max: rMax } = parseElevations(rating.elevation);
 
                     // Find matching problems based on elevation overlap
                     let aspects: string[] | undefined = undefined;
                     const matchingProblems = bulletin.avalancheProblems.filter(p => {
-                        const { min: pMin, max: pMax } = parseElevation(p.elevation);
+                        const { min: pMin, max: pMax } = parseElevations(p.elevation);
                         // Check overlap
                         return (rMin < pMax && rMax > pMin);
                     });
@@ -100,7 +100,7 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                         var maxElev = rMin;
                         matchingProblems.forEach(p => {
                             p.aspects.forEach(a => aspectSet.add(a));
-                            const { min: pMin, max: pMax } = parseElevation(p.elevation);
+                            const { min: pMin, max: pMax } = parseElevations(p.elevation);
                             minElev = Math.min(minElev, pMin);
                             maxElev = Math.max(maxElev, pMax);
                         });
@@ -142,25 +142,27 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
     return bands;
 }
 
-function parseElevation(elevation: { lowerBound?: string; upperBound?: string } | undefined): { min: number, max: number } {
+function parseElevation(bound?: string, isMax: boolean = false): number {
+    var elev = isMax ? DEFAULT_MAX_ELEVATION : 0;
+    if (bound) {
+        elev = parseInt(bound, 10);
+        if (isNaN(elev)) {
+            if (bound.toLowerCase() === 'treeline') {
+                // This is a simplification, to be further improved.
+                elev = TREELINE_ELEVATION;
+            } else elev = isMax ? 0 : DEFAULT_MAX_ELEVATION;
+        }
+    }
+    return elev;
+}
+
+function parseElevations(elevation: { lowerBound?: string; upperBound?: string } | undefined): { min: number, max: number } {
     let min = 0;
     let max = DEFAULT_MAX_ELEVATION; // Default max elevation
 
     if (!elevation) return { min, max };
-
-    if (elevation.lowerBound) {
-        min = parseInt(elevation.lowerBound, 10);
-        if (isNaN(min)) min = 0;
-    }
-
-    if (elevation.upperBound) {
-        max = parseInt(elevation.upperBound, 10);
-        if (isNaN(max)) max = DEFAULT_MAX_ELEVATION;
-    }
-
-    // Handle cases where bounds might be textual or specific codes if necessary
-    // For now, assuming standard CAAML numeric strings
-
+    min = parseElevation(elevation.lowerBound);
+    max = parseElevation(elevation.upperBound, true);
     return { min, max };
 }
 
