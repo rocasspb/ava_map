@@ -31,6 +31,15 @@ app.get('/api/regions', async (req, res) => {
     }
 });
 
+app.get('/api/incidents', async (req, res) => {
+    try {
+        const data = await dataService.getIncidents();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch incident data' });
+    }
+});
+
 // Serve static files from the dist directory
 app.use(express.static(path.join(__dirname, '../dist')));
 

@@ -33,4 +33,6 @@ export const REGION_GEOJSON_URLS = [
     'https://regions.avalanches.org/micro-regions/IT-57_micro-regions.geojson.json',
 ];
 
+export const INCIDENT_DATA_URL = 'https://lawis.at/lawis_api/public/incident?language=en';
+
 export const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes

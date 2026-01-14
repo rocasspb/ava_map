@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { AVALANCHE_DATA_URLS, REGION_GEOJSON_URLS, REFRESH_INTERVAL_MS } from './config';
+import { AVALANCHE_DATA_URLS, REGION_GEOJSON_URLS, INCIDENT_DATA_URL, REFRESH_INTERVAL_MS } from './config';
 import type { CaamlData } from '../src/types/avalanche';
+import type { IncidentData } from '../src/types/incident';
 
 interface Cache<T> {
     data: T | null;
@@ -10,6 +11,7 @@ interface Cache<T> {
 class DataService {
     private avalancheCache: Cache<CaamlData> = { data: null, lastFetchTime: 0 };
     private regionsCache: Cache<any> = { data: null, lastFetchTime: 0 };
+    private incidentsCache: Cache<IncidentData[]> = { data: null, lastFetchTime: 0 };
 
     async getAvalancheData(): Promise<CaamlData> {
         if (this.shouldRefresh(this.avalancheCache)) {
@@ -31,6 +33,17 @@ class DataService {
             throw new Error('No regions data available');
         }
         return this.regionsCache.data;
+    }
+
+    async getIncidents(): Promise<IncidentData[]> {
+        if (this.shouldRefresh(this.incidentsCache)) {
+            console.log('Refreshing incident data...');
+            await this.refreshIncidents();
+        }
+        if (!this.incidentsCache.data) {
+            throw new Error('No incident data available');
+        }
+        return this.incidentsCache.data;
     }
 
     private shouldRefresh(cache: Cache<any>): boolean {
@@ -114,11 +127,26 @@ class DataService {
         }
     }
 
+    private async refreshIncidents() {
+        try {
+            const response = await axios.get<IncidentData[]>(INCIDENT_DATA_URL);
+            this.incidentsCache = {
+                data: response.data,
+                lastFetchTime: Date.now()
+            };
+            console.log('Incident data refreshed.');
+        } catch (error) {
+            console.error('Error refreshing incident data:', error);
+            throw error;
+        }
+    }
+
     async initialize() {
         console.log('Initializing data service...');
         await Promise.all([
             this.refreshAvalancheData(),
-            this.refreshRegions()
+            this.refreshRegions(),
+            this.refreshIncidents()
         ]).catch(err => console.error('Initialization failed (will retry on request):', err));
     }
 }

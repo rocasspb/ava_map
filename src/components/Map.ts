@@ -1,6 +1,7 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
+import type { IncidentData } from '../types/incident';
 import { processRegionElevations } from '../utils/data-processing';
 import * as config from '../config';
 import { ApiService } from '../services/api';
@@ -22,6 +23,7 @@ export class MapComponent {
     private resolveMapLoaded!: () => void;
     private lastAvalancheData: CaamlData | null = null;
     private lastRegionsGeoJSON: any | null = null;
+    private lastIncidents: IncidentData[] | null = null;
     private popup: MapPopup;
     private canvas: HTMLCanvasElement | null = null;
     private terrainProvider: TerrainProvider;
@@ -131,16 +133,19 @@ export class MapComponent {
     private async fetchData() {
         console.log('Fetching avalanche data...');
         try {
-            const [avalancheData, regionsGeoJSON] = await Promise.all([
+            const [avalancheData, regionsGeoJSON, incidents] = await Promise.all([
                 ApiService.getAvalancheData(),
-                ApiService.getRegionsGeoJSON()
+                ApiService.getRegionsGeoJSON(),
+                ApiService.getIncidents()
             ]);
 
             console.log('Avalanche Data:', avalancheData);
             console.log('Regions GeoJSON:', regionsGeoJSON);
+            console.log('Incidents:', incidents);
 
             this.lastAvalancheData = avalancheData;
             this.lastRegionsGeoJSON = regionsGeoJSON;
+            this.lastIncidents = incidents;
 
             this.clickHandler?.updateData(avalancheData, regionsGeoJSON);
 
@@ -177,6 +182,95 @@ export class MapComponent {
             await this.renderAvalancheData();
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(true);
+        }
+        
+        if (this.lastIncidents) {
+            this.renderIncidents();
+        }
+    }
+
+    private renderIncidents() {
+        if (!this.map || !this.lastIncidents) return;
+
+        const sourceId = 'incidents-source';
+        const layerId = 'incidents-layer';
+
+        const features = this.lastIncidents.map(incident => ({
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: [incident.lon, incident.lat]
+            },
+            properties: {
+                ...incident,
+                description: incident.description || 'No description available'
+            }
+        }));
+
+        const geoJsonData = {
+            type: 'FeatureCollection',
+            features: features
+        };
+
+        if (this.map.getSource(sourceId)) {
+            (this.map.getSource(sourceId) as any).setData(geoJsonData);
+        } else {
+            this.map.addSource(sourceId, {
+                type: 'geojson',
+                data: geoJsonData
+            });
+
+            this.map.addLayer({
+                id: layerId,
+                type: 'circle',
+                source: sourceId,
+                paint: {
+                    'circle-radius': 6,
+                    'circle-color': '#FF0000',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#FFFFFF'
+                }
+            });
+
+            // Add click handler for incidents
+            this.map.on('click', layerId, (e) => {
+                if (!e.features || e.features.length === 0) return;
+                
+                const feature = e.features[0];
+                const props = feature.properties;
+                const coordinates = (feature.geometry as any).coordinates.slice();
+
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+
+                new maptiler.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`
+                        <div style="max-width: 300px;">
+                            <h3>Avalanche Incident</h3>
+                            <p><strong>Date:</strong> ${props.date} ${props.time}</p>
+                            <p><strong>Location:</strong> ${props.location_name}</p>
+                            <p><strong>Size:</strong> ${props.avalanche_size}</p>
+                            <p><strong>Elevation:</strong> ${props.elevation}m</p>
+                            <p><strong>Aspect:</strong> ${props.aspect}</p>
+                            <p><strong>Description:</strong> ${props.description}</p>
+                            ${props.fatalities > 0 ? `<p style="color: red;"><strong>Fatalities:</strong> ${props.fatalities}</p>` : ''}
+                        </div>
+                    `)
+                    .addTo(this.map!);
+            });
+
+            // Change cursor on hover
+            this.map.on('mouseenter', layerId, () => {
+                this.map!.getCanvas().style.cursor = 'pointer';
+            });
+            this.map.on('mouseleave', layerId, () => {
+                this.map!.getCanvas().style.cursor = '';
+            });
         }
     }
 

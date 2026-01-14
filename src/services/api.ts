@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { CaamlData } from '../types/avalanche';
+import type { IncidentData } from '../types/incident';
 import { API_BASE_URL } from '../config';
 
 export class ApiService {
@@ -19,6 +20,16 @@ export class ApiService {
             return response.data;
         } catch (error) {
             console.error('Error fetching regions GeoJSON:', error);
+            throw error;
+        }
+    }
+
+    static async getIncidents(): Promise<IncidentData[]> {
+        try {
+            const response = await axios.get<IncidentData[]>(`${API_BASE_URL}/incidents`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching incidents:', error);
             throw error;
         }
     }
