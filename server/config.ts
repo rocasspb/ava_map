@@ -1,7 +1,7 @@
 export const AVALANCHE_DATA_URLS = [
     'https://static.avalanche.report/bulletins/latest/EUREGIO_en_CAAMLv6.json',
     // test with variable data
-    //'https://static.avalanche.report/bulletins/2025-03-16/2025-03-16_EUREGIO_en_CAAMLv6.json',
+    //'https://static.avalanche.report/bulletins/2026-01-11/2026-01-11_EUREGIO_en_CAAMLv6.json',
     'https://static.lawinen-warnung.eu/bulletins/latest/AT-05_en_CAAMLv6.json',
     'https://static.lawinen-warnung.eu/bulletins/latest/AT-08_en_CAAMLv6.json',
     'https://static.lawinen-warnung.eu/bulletins/latest/DE-BY_en_CAAMLv6.json',

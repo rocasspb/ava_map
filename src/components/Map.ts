@@ -504,19 +504,20 @@ export class MapComponent {
                             let finalRgb = rgb;
 
                             if (rule.applySteepnessLogic && slope !== null) {
+                                if(slope >= 50) continue;
                                 if (dlValue >= 4) {
-                                    if (slope > 30) finalColor = config.DANGER_COLORS['high'];
+                                    if (slope >= 30) finalColor = config.DANGER_COLORS['high'];
                                     else finalColor = config.DANGER_COLORS['considerable'];
                                 } else if (dlValue === 3) {
-                                    if (slope > 35) finalColor = config.DANGER_COLORS['high'];
-                                    else if (slope > 30) finalColor = config.DANGER_COLORS['considerable'];
+                                    if (slope >= 35) finalColor = config.DANGER_COLORS['high'];
+                                    else if (slope >= 30) finalColor = config.DANGER_COLORS['considerable'];
                                     else continue;
                                 } else if (dlValue === 2) {
-                                    if (slope > 40) finalColor = config.DANGER_COLORS['high'];
-                                    else if (slope > 35) finalColor = config.DANGER_COLORS['considerable'];
+                                    if (slope >= 40) finalColor = config.DANGER_COLORS['high'];
+                                    else if (slope >= 35) finalColor = config.DANGER_COLORS['considerable'];
                                     else continue;
                                 } else if (dlValue === 1) {
-                                    if (slope > 40) finalColor = config.DANGER_COLORS['considerable'];
+                                    if (slope >= 40) finalColor = config.DANGER_COLORS['considerable'];
                                     else continue;
                                 }
                                 const c = hexToRgb(finalColor);
