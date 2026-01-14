@@ -4,7 +4,7 @@ import * as maptiler from '@maptiler/sdk';
 export const DEFAULT_CENTER: [number, number] = [11.6, 47.2];
 export const DEFAULT_ZOOM = 9;
 export const ZOOM_THRESHOLD_MODE_SWITCH = 11;
-export const MAP_STYLE = maptiler.MapStyle.WINTER;
+export const MAP_STYLE = maptiler.MapStyle.HYBRID;
 // Using terrain-rgb-v2 for both source and direct tile access
 export const TERRAIN_RGB_BASE_URL = 'https://api.maptiler.com/tiles/terrain-rgb-v2';
 export const TERRAIN_SOURCE_URL_PREFIX = `${TERRAIN_RGB_BASE_URL}/tiles.json?key=`;

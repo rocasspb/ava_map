@@ -151,6 +151,14 @@ const initApp = async () => {
       });
     }
 
+    // Layers Toggle
+    const toggleLayersBtn = document.getElementById('toggle-layers');
+    if (toggleLayersBtn) {
+      toggleLayersBtn.addEventListener('click', () => {
+        mapComponent.toggleBaseLayer();
+      });
+    }
+
     // Initial tracking
     AnalyticsService.trackEvent('page_view');
     AnalyticsService.trackEvent('select_mode', { mode: config.MODES.BULLETIN });

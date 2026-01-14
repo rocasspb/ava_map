@@ -678,6 +678,10 @@ button:hover {
   bottom: 100px;
 }
 
+#toggle-layers {
+  bottom: 140px;
+}
+
 #help-btn {
   bottom: 60px;
 }

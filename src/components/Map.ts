@@ -24,6 +24,7 @@ export class MapComponent {
     private popup: MapPopup;
     private canvas: HTMLCanvasElement | null = null;
     private terrainProvider: TerrainProvider;
+    private currentStyle: maptiler.ReferenceMapStyle = config.MAP_STYLE;
 
     // State for dynamic updates
     private currentMode: config.VisualizationMode = config.MODES.BULLETIN;
@@ -50,9 +51,10 @@ export class MapComponent {
     async initMap() {
         this.map = new maptiler.Map({
             container: this.containerId,
-            style: config.MAP_STYLE,
+            style: this.currentStyle,
             center: config.DEFAULT_CENTER,
             zoom: config.DEFAULT_ZOOM,
+            geolocateControl: true
         });
 
         // Create canvas for raster layer
@@ -62,16 +64,7 @@ export class MapComponent {
 
         this.map.on('load', () => {
             console.log('Map loaded');
-
-            // Add terrain
-            this.map!.addSource('maptiler_terrain', {
-                type: 'raster-dem',
-                url: `${config.TERRAIN_SOURCE_URL_PREFIX}${maptiler.config.apiKey}`
-            });
-            this.map!.setTerrain({
-                source: 'maptiler_terrain',
-                exaggeration: config.TERRAIN_EXAGGERATION
-            });
+            this.setupMapLayers();
 
             // Add moveend listener for dynamic updates
             this.map!.on('moveend', () => {
@@ -91,6 +84,42 @@ export class MapComponent {
             console.log('Auto-refreshing avalanche data...');
             this.fetchData();
         }, config.DATA_REFRESH_INTERVAL);
+    }
+
+    private setupMapLayers() {
+        if (!this.map) return;
+
+        // Add terrain
+        if (!this.map.getSource('maptiler_terrain')) {
+            this.map.addSource('maptiler_terrain', {
+                type: 'raster-dem',
+                url: `${config.TERRAIN_SOURCE_URL_PREFIX}${maptiler.config.apiKey}`
+            });
+        }
+        
+        this.map.setTerrain({
+            source: 'maptiler_terrain',
+            exaggeration: config.TERRAIN_EXAGGERATION
+        });
+    }
+
+    async toggleBaseLayer() {
+        if (!this.map) return;
+
+        // Toggle style
+        if (this.currentStyle === maptiler.MapStyle.HYBRID) {
+            this.currentStyle = maptiler.MapStyle.WINTER;
+        } else {
+            this.currentStyle = maptiler.MapStyle.HYBRID;
+        }
+
+        this.map.setStyle(this.currentStyle);
+
+        this.map.once('styledata', () => {
+            this.setupMapLayers();
+            // Re-add raster layer and outline
+            this.updateVisualization();
+        });
     }
 
     private async fetchData() {
