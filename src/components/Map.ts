@@ -13,6 +13,7 @@ import type { GenerationRule } from '../types/GenerationRule';
 
 import { TerrainProvider } from '../services/TerrainProvider';
 import {DANGER_LEVEL_VALUES} from "../config";
+import { MapClickHandler } from './MapClickHandler';
 
 export class MapComponent {
     private map: maptiler.Map | null = null;
@@ -25,6 +26,7 @@ export class MapComponent {
     private canvas: HTMLCanvasElement | null = null;
     private terrainProvider: TerrainProvider;
     private currentStyle: maptiler.ReferenceMapStyle = config.MAP_STYLE;
+    private clickHandler: MapClickHandler | null = null;
 
     // State for dynamic updates
     private currentMode: config.VisualizationMode = config.MODES.BULLETIN;
@@ -57,6 +59,8 @@ export class MapComponent {
             geolocateControl: true
         });
 
+        this.clickHandler = new MapClickHandler(this.map, this.terrainProvider, this.popup);
+
         // Create canvas for raster layer
         this.canvas = document.createElement('canvas');
         this.canvas.id = 'avalanche-raster-canvas';
@@ -72,7 +76,7 @@ export class MapComponent {
             });
 
             // Add click listener for raster interaction
-            this.map!.on('click', (e) => this.handleMapClick(e));
+            this.map!.on('click', (e) => this.clickHandler?.handleClick(e));
 
             this.resolveMapLoaded();
         });
@@ -135,6 +139,8 @@ export class MapComponent {
 
             this.lastAvalancheData = avalancheData;
             this.lastRegionsGeoJSON = regionsGeoJSON;
+
+            this.clickHandler?.updateData(avalancheData, regionsGeoJSON);
 
             this.updateVisualization();
         } catch (error) {
@@ -324,83 +330,6 @@ export class MapComponent {
                     'line-opacity': config.OUTLINE_OPACITY
                 }
             });
-        }
-    }
-
-    private async handleMapClick(e: any) {
-        const point: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-        let clickedRegionId: string | null = null;
-        if (this.lastRegionsGeoJSON && this.lastRegionsGeoJSON.features) {
-            for (const feature of this.lastRegionsGeoJSON.features) {
-                let isInside = false;
-                if (feature.geometry.type === 'Polygon') {
-                    isInside = isPointInPolygon(point, feature.geometry.coordinates);
-                } else if (feature.geometry.type === 'MultiPolygon') {
-                    isInside = isPointInMultiPolygon(point, feature.geometry.coordinates);
-                }
-
-                if (isInside) {
-                    clickedRegionId = feature.properties.id;
-                    break;
-                }
-            }
-        }
-
-        // Calculate terrain metrics for the clicked point
-        let pointElevation: number | null = null;
-        let pointSlope: number | null = null;
-        let pointAspect: string | null = null;
-
-        try {
-            // Ensure tiles are fetched for the current view before querying
-            const bounds = this.map!.getBounds();
-            await this.terrainProvider.fetchTiles(
-                { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() },
-                this.map!.getZoom()
-            );
-
-            const getElevation = (p: [number, number]): number | null => {
-                return this.terrainProvider.getElevation(p[0], p[1]);
-            };
-
-            pointElevation = getElevation(point);
-            const metrics = calculateTerrainMetrics(point, getElevation);
-            if (metrics) {
-                pointSlope = metrics.slope;
-                pointAspect = metrics.aspect;
-            }
-        } catch (err) {
-            console.warn("Failed to calculate terrain metrics for popup", err);
-        }
-
-        if (!clickedRegionId) return;
-        if (this.lastAvalancheData && this.lastAvalancheData.bulletins) {
-            const bulletin = this.lastAvalancheData.bulletins.find(b =>
-                b.regions.some(r => r.regionID.startsWith(clickedRegionId!))
-            );
-
-            if (bulletin) {
-                let bulletinText = "";
-                if (bulletin.avalancheActivity) {
-                    const parts = [];
-                    if (bulletin.avalancheActivity.highlights) parts.push(bulletin.avalancheActivity.highlights);
-                    if (bulletin.avalancheActivity.comment) parts.push(bulletin.avalancheActivity.comment);
-                    bulletinText = parts.join('\n\n');
-                }
-
-                const properties = {
-                    regionId: clickedRegionId,
-                    dangerRatings: bulletin.dangerRatings,
-                    dangerLevel: bulletin.dangerRatings[0]?.mainValue, // Fallback
-                    avalancheProblems: bulletin.avalancheProblems,
-                    bulletinText: bulletinText,
-                    pointElevation: pointElevation,
-                    pointSlope: pointSlope,
-                    pointAspect: pointAspect
-                };
-
-                this.popup.show(this.map!, e.lngLat, properties);
-            }
         }
     }
 
