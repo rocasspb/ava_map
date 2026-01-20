@@ -7,11 +7,19 @@ import type { GenerationRule } from '../types/GenerationRule';
 import { TerrainProvider } from '../services/TerrainProvider';
 
 export class CanvasRenderer {
+    private readonly map: maptiler.Map;
+    private readonly canvas: HTMLCanvasElement;
+    private terrainProvider: TerrainProvider;
+
     constructor(
-        private map: maptiler.Map,
-        private canvas: HTMLCanvasElement,
-        private terrainProvider: TerrainProvider
-    ) {}
+        map: maptiler.Map,
+        canvas: HTMLCanvasElement,
+        terrainProvider: TerrainProvider
+    ) {
+        this.map = map;
+        this.canvas = canvas;
+        this.terrainProvider = terrainProvider;
+    }
 
     async draw(rules: GenerationRule[]): Promise<{ coordinates: [[number, number], [number, number], [number, number], [number, number]] } | null> {
         if (!this.map || !this.canvas) return null;

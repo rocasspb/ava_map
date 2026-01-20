@@ -62,12 +62,11 @@ export class MapComponent {
 
         this.clickHandler = new MapClickHandler(this.map, this.terrainProvider, this.popup);
 
-        // Create canvas for raster layer
         this.canvas = document.createElement('canvas');
         this.canvas.id = 'avalanche-raster-canvas';
         this.canvas.style.display = 'none';
         
-        this.canvasRenderer = new CanvasRenderer(this.map, this.canvas, this.terrainProvider);
+        this.canvasRenderer = new CanvasRenderer(this.map!, this.canvas!, this.terrainProvider);
 
         this.map.on('load', () => {
             console.log('Map loaded');
@@ -145,7 +144,7 @@ export class MapComponent {
 
             this.clickHandler?.updateData(avalancheData, regionsGeoJSON);
 
-            this.updateVisualization();
+            await this.updateVisualization();
         } catch (error) {
             console.error('Failed to fetch avalanche data:', error);
         }
@@ -153,7 +152,7 @@ export class MapComponent {
 
     async setMode(mode: config.VisualizationMode) {
         this.currentMode = mode;
-        this.updateVisualization();
+        await this.updateVisualization();
     }
 
     async setCustomModeParams(min?: number, max?: number, aspects?: string[], minSlope?: number) {
@@ -161,12 +160,12 @@ export class MapComponent {
         if (max !== undefined) this.customMax = max;
         if (aspects !== undefined) this.customAspects = aspects;
         if (minSlope !== undefined) this.customMinSlope = minSlope;
-        this.updateVisualization();
+        await this.updateVisualization();
     }
 
     private async refreshPoints() {
         if (this.isGenerating) return;
-        this.updateVisualization();
+        await this.updateVisualization();
     }
 
     async updateVisualization() {
