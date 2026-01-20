@@ -28,10 +28,29 @@ export class MapPopup {
         const bulletinText = properties['bulletinText'];
         const avalancheProblemsProp = properties['avalancheProblems'];
 
+        const pointElevation = properties['pointElevation'];
+        const pointSlope = properties['pointSlope'];
+        const pointAspect = properties['pointAspect'];
+
         let html = `<div style="font-family: sans-serif; max-height: 400px; overflow-y: auto; padding-right: 5px;">`;
 
         if (regionId) {
             html += `<h3 style="margin: 0 0 4px 0;">Region: ${regionId}</h3>`;
+        }
+
+        if (pointElevation != null || pointSlope != null || pointAspect != null) {
+            html += `<div style="margin-bottom: 8px; font-size: 0.9em; background: #f5f5f5; padding: 5px; border-radius: 4px; display: flex; justify-content: space-around;">`;
+            
+            if (pointElevation != null) {
+                html += `<div><strong>Elev:</strong> ${Math.round(pointElevation)}m</div>`;
+            }
+            if (pointSlope != null) {
+                html += `<div><strong>Slope:</strong> ${Math.round(pointSlope)}°</div>`;
+            }
+            if (pointAspect != null) {
+                html += `<div><strong>Aspect:</strong> ${pointAspect}</div>`;
+            }
+            html += `</div>`;
         }
 
         if (dangerRatings && Array.isArray(dangerRatings) && dangerRatings.length > 0) {

@@ -16,11 +16,9 @@ export class TerrainProvider {
         bbox: { west: number, south: number, east: number, north: number },
         mapZoom: number
     ): Promise<void> {
-        // --- Tile Fetching Logic ---
         const zoom = Math.floor(mapZoom);
         this.currentTileZoom = Math.min(zoom + 2, 12);
 
-        // Calculate required tiles
         const [minTileX, minTileY] = this.lngLatToTile(bbox.west, bbox.north, this.currentTileZoom); // Top-Left
         const [maxTileX, maxTileY] = this.lngLatToTile(bbox.east, bbox.south, this.currentTileZoom); // Bottom-Right
 
@@ -31,11 +29,9 @@ export class TerrainProvider {
             }
         }
 
-        // Fetch tiles in parallel
         await Promise.all(tilesToFetch.map(async ({ x, y }) => {
             const key = `${this.currentTileZoom}/${x}/${y}`;
 
-            // Skip if already cached (and not null, assuming static terrain doesn't change)
             if (this.tileCache.has(key)) return;
 
             const url = this.getTileUrl(x, y, this.currentTileZoom, this.apiKey);
@@ -123,7 +119,6 @@ export class TerrainProvider {
         const h01 = getValue(tX, tY, x0, y0 + 1);
         const h11 = getValue(tX, tY, x0 + 1, y0 + 1);
 
-        // Fallback strategy for edges: if we have any data, use it
         if (h00 === null || h10 === null || h01 === null || h11 === null) {
             return h00 ?? h10 ?? h01 ?? h11 ?? null;
         }
@@ -165,7 +160,6 @@ export class TerrainProvider {
     }
 
     private getElevationFromRgb(r: number, g: number, b: number): number {
-        // Terrain-RGB v2 formula: -10000 + ((R * 256 * 256 + G * 256 + B) * 0.1)
         return -10000 + ((r * 256 * 256 + g * 256 + b) * 0.1);
     }
 }

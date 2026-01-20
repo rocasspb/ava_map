@@ -327,7 +327,7 @@ export class MapComponent {
         }
     }
 
-    private handleMapClick(e: any) {
+    private async handleMapClick(e: any) {
         const point: [number, number] = [e.lngLat.lng, e.lngLat.lat];
         let clickedRegionId: string | null = null;
         if (this.lastRegionsGeoJSON && this.lastRegionsGeoJSON.features) {
@@ -346,10 +346,37 @@ export class MapComponent {
             }
         }
 
+        // Calculate terrain metrics for the clicked point
+        let pointElevation: number | null = null;
+        let pointSlope: number | null = null;
+        let pointAspect: string | null = null;
+
+        try {
+            // Ensure tiles are fetched for the current view before querying
+            const bounds = this.map!.getBounds();
+            await this.terrainProvider.fetchTiles(
+                { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() },
+                this.map!.getZoom()
+            );
+
+            const getElevation = (p: [number, number]): number | null => {
+                return this.terrainProvider.getElevation(p[0], p[1]);
+            };
+
+            pointElevation = getElevation(point);
+            const metrics = calculateTerrainMetrics(point, getElevation);
+            if (metrics) {
+                pointSlope = metrics.slope;
+                pointAspect = metrics.aspect;
+            }
+        } catch (err) {
+            console.warn("Failed to calculate terrain metrics for popup", err);
+        }
+
         if (!clickedRegionId) return;
         if (this.lastAvalancheData && this.lastAvalancheData.bulletins) {
             const bulletin = this.lastAvalancheData.bulletins.find(b =>
-                b.regions.some(r => r.regionID.startsWith(clickedRegionId))
+                b.regions.some(r => r.regionID.startsWith(clickedRegionId!))
             );
 
             if (bulletin) {
@@ -366,7 +393,10 @@ export class MapComponent {
                     dangerRatings: bulletin.dangerRatings,
                     dangerLevel: bulletin.dangerRatings[0]?.mainValue, // Fallback
                     avalancheProblems: bulletin.avalancheProblems,
-                    bulletinText: bulletinText
+                    bulletinText: bulletinText,
+                    pointElevation: pointElevation,
+                    pointSlope: pointSlope,
+                    pointAspect: pointAspect
                 };
 
                 this.popup.show(this.map!, e.lngLat, properties);
@@ -391,11 +421,6 @@ export class MapComponent {
         const width = Math.ceil(lngRange / gridSpacingDeg);
         const height = Math.ceil(latRange / gridSpacingDeg);
 
-        const MAX_DIM = 2000;
-        if (width > MAX_DIM || height > MAX_DIM) {
-            // Could clamp here if needed
-        }
-
         this.canvas.width = width;
         this.canvas.height = height;
 
@@ -407,7 +432,6 @@ export class MapComponent {
         const imgData = ctx.createImageData(width, height);
         const data = imgData.data;
 
-        // --- Fetch Tiles via Provider ---
         try {
             await this.terrainProvider.fetchTiles(
                 { west, south, east, north },
@@ -421,8 +445,6 @@ export class MapComponent {
         const getElevation = (p: [number, number]): number | null => {
             return this.terrainProvider.getElevation(p[0], p[1]);
         };
-        // ---------------------------
-        // ---------------------------
 
         const setPixel = (x: number, y: number, r: number, g: number, b: number) => {
             const index = (y * width + x) * 4;
