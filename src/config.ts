@@ -13,7 +13,8 @@ export const TERRAIN_EXAGGERATION = 1;
 export const MODES = {
     BULLETIN: 'bulletin',
     RISK: 'risk',
-    CUSTOM: 'custom'
+    CUSTOM: 'custom',
+    CLEAN: 'clean'
 } as const;
 
 export type VisualizationMode = typeof MODES[keyof typeof MODES];
@@ -22,6 +23,7 @@ export const MODE_LABELS: Record<VisualizationMode, string> = {
     [MODES.BULLETIN]: 'Bulletin',
     [MODES.RISK]: 'Risk',
     [MODES.CUSTOM]: 'Custom',
+    [MODES.CLEAN]: 'Clean',
 };
 
 // Steepness Mode

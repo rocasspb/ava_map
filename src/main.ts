@@ -43,6 +43,10 @@ const initApp = async () => {
         customControls?.classList.add('hidden');
         riskControls?.classList.remove('hidden');
         mapComponent.setMode(config.MODES.RISK);
+      } else if (mode === config.MODES.CLEAN) {
+        customControls?.classList.add('hidden');
+        riskControls?.classList.add('hidden');
+        mapComponent.setMode(config.MODES.CLEAN);
       } else {
         customControls?.classList.add('hidden');
         riskControls?.classList.add('hidden');
@@ -60,6 +64,7 @@ const initApp = async () => {
           let iconName = 'nearby'; // default bulletin
           if (mode === config.MODES.RISK) iconName = 'landscape';
           if (mode === config.MODES.CUSTOM) iconName = 'tune';
+          if (mode === config.MODES.CLEAN) iconName = 'visibility_off';
           iconSpan.textContent = iconName;
         }
       }

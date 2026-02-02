@@ -169,12 +169,30 @@ export class MapComponent {
     }
 
     async updateVisualization() {
-        if (this.currentMode === config.MODES.CUSTOM) {
+        if (this.currentMode === config.MODES.CLEAN) {
+            this.clearLayers();
+        } else if (this.currentMode === config.MODES.CUSTOM) {
             await this.renderCustomElevation(this.customMin, this.customMax, this.customAspects, this.customMinSlope);
         } else if (this.currentMode === config.MODES.RISK && this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData();
         } else if (this.lastAvalancheData && this.lastRegionsGeoJSON) {
             await this.renderAvalancheData(true);
+        }
+    }
+
+    private clearLayers() {
+        if (!this.map) return;
+        if (this.map.getLayer('avalanche-raster-layer')) {
+            this.map.removeLayer('avalanche-raster-layer');
+        }
+        if (this.map.getSource('avalanche-raster-source')) {
+            this.map.removeSource('avalanche-raster-source');
+        }
+        if (this.map.getLayer('regions-outline')) {
+            this.map.removeLayer('regions-outline');
+        }
+        if (this.map.getSource('regions-outline-source')) {
+            this.map.removeSource('regions-outline-source');
         }
     }
 
