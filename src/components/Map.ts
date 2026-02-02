@@ -196,19 +196,19 @@ export class MapComponent {
         const layerId = 'incidents-layer';
 
         const features = this.lastIncidents.map(incident => ({
-            type: 'Feature',
+            type: 'Feature' as const,
             geometry: {
-                type: 'Point',
-                coordinates: [incident.lon, incident.lat]
+                type: 'Point' as const,
+                coordinates: [incident.location.longitude, incident.location.latitude]
             },
             properties: {
                 ...incident,
-                description: incident.description || 'No description available'
+                description: incident.date || 'No description available'
             }
         }));
 
         const geoJsonData = {
-            type: 'FeatureCollection',
+            type: 'FeatureCollection' as const,
             features: features
         };
 
