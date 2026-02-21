@@ -52,7 +52,7 @@ export const DANGER_COLORS: Record<string, string> = {
     'moderate': '#FFFF33',     // 2 - Yellow
     'considerable': '#FF9900', // 3 - Orange
     'high': '#FF0000',         // 4 - Red
-    'very_high': '#A60000',    // 5 - Dark Red
+    'very_high': '#300000',    // 5 - Dark Red
     'default': '#888888'
 };
 
@@ -85,7 +85,7 @@ export const EUREGIO_BOUNDS = { minLng: -10.0, maxLng: 20.0, minLat: 35.0, maxLa
 
 // Data Processing
 export const DEFAULT_MAX_ELEVATION = 9000;
-export const TREELINE_ELEVATION = 1800; //this is a gap. Optimally, we need to find real tre line data for the place
+export const TREELINE_ELEVATION = 1800; //this is a gap. Optimally, we need to find real tree line data for the place
 
 // Calculations
 export const SLOPE_CALCULATION_OFFSET = 0.0001;
