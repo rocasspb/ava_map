@@ -6,9 +6,15 @@ import { SteepnessSlider } from './components/SteepnessSlider';
 import { ElevationSlider } from './components/ElevationSlider';
 import { AnalyticsService } from './services/analytics';
 import matrixImg from './img/matrix.png';
+import { WasmLoader } from './services/WasmLoader';
 
 const initApp = async () => {
   AnalyticsService.initialize();
+
+  // Verify Wasm loading
+  WasmLoader.getInstance()
+    .then(() => console.log('WasmLoader initialized in main.ts'))
+    .catch(err => console.error('WasmLoader failed in main.ts:', err));
 
   const mapComponent = new MapComponent('map');
 

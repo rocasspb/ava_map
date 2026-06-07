@@ -13,7 +13,7 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/avalanche-data', async (req, res) => {
+app.get('/api/avalanche-data', async (_req, res) => {
     try {
         const data = await dataService.getAvalancheData();
         res.json(data);
@@ -22,7 +22,7 @@ app.get('/api/avalanche-data', async (req, res) => {
     }
 });
 
-app.get('/api/regions', async (req, res) => {
+app.get('/api/regions', async (_req, res) => {
     try {
         const data = await dataService.getRegions();
         res.json(data);
@@ -35,11 +35,15 @@ app.get('/api/regions', async (req, res) => {
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Catch-all route to serve index.html for non-API requests (SPA support)
-app.get(/.*/, (req, res) => {
+app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
     await dataService.initialize();
+    console.log('Server is listening?', server.listening);
 });
+
+server.on('error', (e) => console.error('SERVER ERROR:', e));
+server.on('close', () => console.log('SERVER CLOSED'));

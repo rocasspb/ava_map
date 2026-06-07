@@ -7,18 +7,21 @@
     "dev": "concurrently \"tsx server/index.ts\" \"vite\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "server": "tsx server/index.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "typescript": "~5.9.3",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vitest": "^4.1.6"
   },
   "dependencies": {
     "@maptiler/sdk": "^3.8.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
+    "AvaAwaAnd-shared": "file:kmplib/AvaAwaAnd-shared-0.0.0-unspecified.tgz",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "express": "^5.2.1",
