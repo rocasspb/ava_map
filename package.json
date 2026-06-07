@@ -21,7 +21,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
-    "AvaAwaAnd-shared": "file:kmplib/AvaAwaAnd-shared-0.0.0-unspecified.tgz",
+    "AvaAwaAnd-shared": "file:kmplib",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "express": "^5.2.1",
