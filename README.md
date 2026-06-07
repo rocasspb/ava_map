@@ -24,6 +24,7 @@ A tool to assess avalanche terrain, based on the slope parameters and regional a
 
 - **Framework**: [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - **Backend**: [Node.js](https://nodejs.org/) + [Express](https://expressjs.com/)
+- **Core Logic**: Kotlin Multiplatform (KMP). The core avalanche logic and libraries are taken from [ava_android](https://github.com/rocasspb/ava_android) and compiled to WebAssembly (Wasm).
 - **Map Engine**: [MapTiler SDK](https://docs.maptiler.com/sdk-js/)
 - **Data Fetching**: Axios
 - **Data Sources**: 
