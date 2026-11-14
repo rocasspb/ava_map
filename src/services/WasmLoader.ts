@@ -14,8 +14,8 @@ export class WasmLoader {
 
         this.loadingPromise = (async () => {
             try {
-                // Import from the local npm package
-                const module = await import('AvaAwaAnd-shared');
+                // Import from the private GitHub Packages npm package
+                const module = await import('@rocasspb/avaawa-shared');
                 
                 this.instance = module;
                 console.log('KMP Wasm module loaded successfully');

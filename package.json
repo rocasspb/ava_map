@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"tsx server/index.ts\" \"vite\"",
+    "dev:linked": "concurrently \"tsx server/index.ts\" \"vite --mode linked\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -21,7 +22,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
-    "AvaAwaAnd-shared": "file:kmplib",
+    "@rocasspb/avaawa-shared": "0.1.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "express": "^5.2.1",

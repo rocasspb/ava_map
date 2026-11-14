@@ -1,5 +1,5 @@
-declare module 'AvaAwaAnd-shared' {
+declare module '@rocasspb/avaawa-shared' {
     const value: any;
     export default value;
-    export * from 'AvaAwaAnd-shared';
+    export * from '@rocasspb/avaawa-shared';
 }
