@@ -1,5 +1,9 @@
 import type { CaamlData, DangerRating, AvalancheProblem } from '../types/avalanche';
-import { DEFAULT_MAX_ELEVATION, DANGER_LEVEL_VALUES, TREELINE_ELEVATION } from '../config';
+import { DEFAULT_MAX_ELEVATION, DANGER_LEVEL_VALUES, TREELINE_ELEVATION, MODES, EUREGIO_BOUNDS, STEEPNESS_THRESHOLDS } from '../config';
+import type { VisualizationMode } from '../config';
+import { getBounds } from './geometry';
+import { adjustElevationForTreeline, getDangerColor } from './map-helpers';
+import type { GenerationRule } from '../types/GenerationRule';
 
 export interface RegionDanger {
     regionID: string;
@@ -19,32 +23,10 @@ export interface ElevationBand {
 export function processAvalancheData(data: CaamlData): Map<string, DangerRating> {
     const regionDangerMap = new Map<string, DangerRating>();
 
-    // Assuming the first bulletin is the most relevant one for now
-    // In a real app, we might handle multiple bulletins or time periods
-    const bulletin = data.bulletins[0];
-
-    if (!bulletin) return regionDangerMap;
-
-    // Create a lookup for danger ratings by elevation/validTime if needed
-    // For simplicity, we'll take the highest mainValue if multiple exist, or just the first one
-    // The structure links regions to the bulletin, and the bulletin has dangerRatings.
-    // Wait, the CAAML structure usually links specific danger ratings to specific regions or the whole bulletin applies to listed regions.
-    // In the viewed chunk: "regions": [ ... ] is inside the bulletin.
-    // And "dangerRatings": [ ... ] is also inside the bulletin.
-    // This implies the danger ratings apply to ALL regions in that bulletin.
-
-    // So we just need to get the max danger rating for the bulletin and apply it to all its regions.
-
-    const maxDanger = getMaxDanger(bulletin.dangerRatings);
-
-    if (maxDanger) {
-        bulletin.regions.forEach(region => {
-            regionDangerMap.set(region.regionID, maxDanger);
-        });
-    }
-
-    // If there are multiple bulletins, we should process all of them
-    data.bulletins.forEach(b => {
+    const bulletins = data.bulletins || [];
+    
+    // Process all bulletins
+    bulletins.forEach(b => {
         const danger = getMaxDanger(b.dangerRatings);
         if (danger) {
             b.regions.forEach(r => {
@@ -58,8 +40,9 @@ export function processAvalancheData(data: CaamlData): Map<string, DangerRating>
 
 export function processRegionElevations(data: CaamlData): ElevationBand[] {
     const bands: ElevationBand[] = [];
+    const bulletins = data.bulletins || [];
 
-    data.bulletins.forEach(bulletin => {
+    bulletins.forEach(bulletin => {
         let bulletinText = "";
         if (bulletin.avalancheActivity) {
             const parts = [];
@@ -76,12 +59,6 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
                 if (!maxDanger) return;
 
                 // Check if problems have elevation info
-                // Note: Problems might have different elevations. 
-                // For visualization, we'll try to create bands for each problem that applies.
-                // However, usually the DANGER RATING itself has an elevation in the CAAML structure 
-                // (see DangerRating interface: it has 'elevation').
-
-                // Let's look at the DangerRatings first as they directly correlate to the color.
                 bulletin.dangerRatings.forEach(rating => {
                     var { min: rMin, max: rMax } = parseElevations(rating.elevation);
 
@@ -142,15 +119,109 @@ export function processRegionElevations(data: CaamlData): ElevationBand[] {
     return bands;
 }
 
+/**
+ * Normalizes GeoJSON geometry to MultiPolygon format for KMP compatibility.
+ */
+function normalizeGeometry(geometry: any) {
+    if (!geometry) return null;
+    if (geometry.type === 'Polygon') {
+        return {
+            type: 'MultiPolygon',
+            coordinates: [geometry.coordinates]
+        };
+    }
+    return geometry;
+}
+
+/**
+ * Creates a list of GenerationRules from CAAML data and regions GeoJSON.
+ */
+export function createGenerationRules(
+    data: CaamlData,
+    regionsGeoJSON: any,
+    mode: VisualizationMode,
+    customParams?: { min: number, max: number, aspects: string[], minSlope: number }
+): GenerationRule[] {
+    if (mode === MODES.CLEAN) return [];
+
+    if (mode === MODES.CUSTOM) {
+        const { min, max, aspects, minSlope } = customParams || {
+            min: DEFAULT_MAX_ELEVATION,
+            max: DEFAULT_MAX_ELEVATION,
+            aspects: [],
+            minSlope: 0
+        };
+
+        return STEEPNESS_THRESHOLDS.filter(t => t.minSlope >= minSlope).map(t => ({
+            bounds: EUREGIO_BOUNDS,
+            minElev: min,
+            maxElev: max,
+            minSlope: t.minSlope,
+            validAspects: aspects,
+            color: t.color,
+            properties: { steepness: t.label }
+        }));
+    }
+
+    const elevationBands = processRegionElevations(data);
+    const regionsMap = new Map<string, any>();
+    if (regionsGeoJSON.features) {
+        regionsGeoJSON.features.forEach((f: any) => {
+            regionsMap.set(f.properties.id, f);
+        });
+    }
+
+    const rules: GenerationRule[] = [];
+
+    for (const band of elevationBands) {
+        const regionFeature = regionsMap.get(band.regionID);
+        if (!regionFeature) continue;
+
+        const regionBounds = getBounds(regionFeature);
+        const color = getDangerColor(band.dangerLevel);
+        const useAspectAndElevation = mode === MODES.RISK;
+
+        const { min: ruleMinElev, max: ruleMaxElev } = adjustElevationForTreeline(
+            band.minElev,
+            band.maxElev,
+            band.avalancheProblems
+        );
+
+        rules.push({
+            bounds: regionBounds,
+            geometry: normalizeGeometry(regionFeature.geometry),
+            minElev: ruleMinElev,
+            maxElev: ruleMaxElev,
+            minSlope: mode === MODES.BULLETIN ? undefined : 30,
+            validAspects: useAspectAndElevation ? band.validAspects : undefined,
+            applySteepnessLogic: useAspectAndElevation,
+            color: color,
+            properties: {
+                regionId: band.regionID,
+                dangerLevel: band.dangerLevel,
+                avalancheProblems: band.avalancheProblems,
+                bulletinText: band.bulletinText
+            }
+        });
+    }
+
+    rules.sort((a, b) => {
+        const levelA = a.properties.dangerLevel ? DANGER_LEVEL_VALUES[a.properties.dangerLevel] || 0 : 0;
+        const levelB = b.properties.dangerLevel ? DANGER_LEVEL_VALUES[b.properties.dangerLevel] || 0 : 0;
+        return levelA - levelB;
+    });
+
+    return rules;
+}
+
 function parseElevation(bound?: string, isMax: boolean = false): number {
     var elev = isMax ? DEFAULT_MAX_ELEVATION : 0;
     if (bound) {
         elev = parseInt(bound, 10);
         if (isNaN(elev)) {
             if (bound.toLowerCase() === 'treeline') {
-                // This is a simplification, to be further improved.
                 elev = TREELINE_ELEVATION;
-            } else elev = isMax ? 0 : DEFAULT_MAX_ELEVATION;
+            } else elev = isMax ? DEFAULT_MAX_ELEVATION : 0;
         }
     }
     return elev;
@@ -158,7 +229,7 @@ function parseElevation(bound?: string, isMax: boolean = false): number {
 
 function parseElevations(elevation: { lowerBound?: string; upperBound?: string } | undefined): { min: number, max: number } {
     let min = 0;
-    let max = DEFAULT_MAX_ELEVATION; // Default max elevation
+    let max = DEFAULT_MAX_ELEVATION;
 
     if (!elevation) return { min, max };
     min = parseElevation(elevation.lowerBound);
@@ -169,8 +240,6 @@ function parseElevations(elevation: { lowerBound?: string; upperBound?: string }
 function getMaxDanger(ratings: DangerRating[]): DangerRating | null {
     if (!ratings || ratings.length === 0) return null;
 
-    // Map danger strings to numbers for comparison
-    // Map danger strings to numbers for comparison
     const dangerLevels = DANGER_LEVEL_VALUES;
 
     let maxRating = ratings[0];

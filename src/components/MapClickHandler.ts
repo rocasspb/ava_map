@@ -30,9 +30,9 @@ export class MapClickHandler {
             for (const feature of this.regionsGeoJSON.features) {
                 let isInside = false;
                 if (feature.geometry.type === 'Polygon') {
-                    isInside = isPointInPolygon(point, feature.geometry.coordinates);
+                    isInside = await isPointInPolygon(point, feature.geometry.coordinates);
                 } else if (feature.geometry.type === 'MultiPolygon') {
-                    isInside = isPointInMultiPolygon(point, feature.geometry.coordinates);
+                    isInside = await isPointInMultiPolygon(point, feature.geometry.coordinates);
                 }
 
                 if (isInside) {
@@ -60,7 +60,7 @@ export class MapClickHandler {
             };
 
             pointElevation = getElevation(point);
-            const metrics = calculateTerrainMetrics(point, getElevation);
+            const metrics = await calculateTerrainMetrics(point, getElevation);
             if (metrics) {
                 pointSlope = metrics.slope;
                 pointAspect = metrics.aspect;

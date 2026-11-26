@@ -1,17 +1,13 @@
 import * as maptiler from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 import type { CaamlData } from '../types/avalanche';
-import { processRegionElevations } from '../utils/data-processing';
+import { createGenerationRules } from '../utils/data-processing';
 import * as config from '../config';
 import { ApiService } from '../services/api';
 
-import { getBounds } from '../utils/geometry';
 import { MapPopup } from './MapPopup';
-import { adjustElevationForTreeline, getDangerColor } from '../utils/map-helpers';
-import type { GenerationRule } from '../types/GenerationRule';
 
 import { TerrainProvider } from '../services/TerrainProvider';
-import {DANGER_LEVEL_VALUES} from "../config";
 import { MapClickHandler } from './MapClickHandler';
 import { CanvasRenderer } from './CanvasRenderer';
 
@@ -202,55 +198,8 @@ export class MapComponent {
 
         this.isGenerating = true;
 
-        const elevationBands = processRegionElevations(this.lastAvalancheData);
-
-        // Map regions by ID for easy lookup
-        const regionsMap = new Map<string, any>();
-        if (this.lastRegionsGeoJSON.features) {
-            this.lastRegionsGeoJSON.features.forEach((f: any) => {
-                regionsMap.set(f.properties.id, f);
-            });
-        }
-
-        const rules: GenerationRule[] = [];
-
-        for (const band of elevationBands) {
-            const regionFeature = regionsMap.get(band.regionID);
-            if (!regionFeature) continue;
-
-            const regionBounds = getBounds(regionFeature);
-            const color = getDangerColor(band.dangerLevel);
-            const useAspectANdElevation = this.currentMode === config.MODES.RISK;
-
-            const { min: ruleMinElev, max: ruleMaxElev } = adjustElevationForTreeline(
-                band.minElev,
-                band.maxElev,
-                band.avalancheProblems
-            );
-
-            rules.push({
-                bounds: regionBounds,
-                geometry: regionFeature.geometry,
-                minElev: ruleMinElev,
-                maxElev: ruleMaxElev,
-                minSlope: bulletin ? undefined : 30,
-                validAspects: useAspectANdElevation ? band.validAspects : undefined,
-                applySteepnessLogic: useAspectANdElevation,
-                color: color,
-                properties: {
-                    regionId: band.regionID,
-                    dangerLevel: band.dangerLevel,
-                    avalancheProblems: band.avalancheProblems,
-                    bulletinText: band.bulletinText
-                }
-            });
-        }
-
-        rules.sort((a, b) => {
-            const levelA = a.properties.dangerLevel ? DANGER_LEVEL_VALUES[a.properties.dangerLevel] || 0 : 0;
-            const levelB = b.properties.dangerLevel ? DANGER_LEVEL_VALUES[b.properties.dangerLevel] || 0 : 0;
-            return levelA - levelB;
-        });
+        const mode = bulletin ? config.MODES.BULLETIN : config.MODES.RISK;
+        const rules = createGenerationRules(this.lastAvalancheData, this.lastRegionsGeoJSON, mode);
 
         const rasterData = await this.canvasRenderer.draw(rules);
         if (rasterData) {
@@ -272,19 +221,11 @@ export class MapComponent {
         this.customAspects = aspects;
         this.customMinSlope = minSlope;
 
-        const bounds = config.EUREGIO_BOUNDS;
+        const rules = createGenerationRules(this.lastAvalancheData!, this.lastRegionsGeoJSON, config.MODES.CUSTOM, {
+            min, max, aspects, minSlope
+        });
 
-        const orderedRules: GenerationRule[] = config.STEEPNESS_THRESHOLDS.filter(t => t.minSlope >= minSlope).map(t => ({
-            bounds: bounds,
-            minElev: min,
-            maxElev: max,
-            minSlope: t.minSlope,
-            validAspects: aspects,
-            color: t.color,
-            properties: { steepness: t.label }
-        }));
-
-        const rasterData = await this.canvasRenderer.draw(orderedRules);
+        const rasterData = await this.canvasRenderer.draw(rules);
         if (rasterData) {
             this.updateRasterSource(rasterData);
             this.addRasterLayer();
